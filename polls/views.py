@@ -17,15 +17,15 @@ def index(request):
 def question_detail(request, question_id):
     try:
         question = model_to_dict(Question.objects.get(pk=question_id))
-        question["status"] = "success"
+        question["success"] = True
         return JsonResponse(question)
     except:
-        return JsonResponse({"status":"failure"})
+        return JsonResponse({"success":False})
 
 def add_data(request):
-    #try:
+    try:
         data = loads(request.body)
         Question(question_text=data["question_text"], pub_date=timezone.make_aware(datetime.strptime(data["datetime"], '%y-%m-%d-%H-%M-%S'))).save()
-        return JsonResponse({"status":"success"})
-    #except:
-        return JsonResponse({"status":"failure"})
+        return JsonResponse({"success":True})
+    except:
+        return JsonResponse({"success":False})
