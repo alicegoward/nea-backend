@@ -10,3 +10,8 @@ class Question(models.Model):
         return self.pub_date >= timezone.now() - datetime.timedelta(days=1)
 
 
+class Location_data(models.Model):
+    user = models.CharField(max_length=200)
+    lat = models.FloatField()
+    long = models.FloatField()
+    datetime = models.IntegerField()
