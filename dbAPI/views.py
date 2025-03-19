@@ -36,7 +36,7 @@ def user_info(request, user, password):
 def add_user(request):
     try:
         data = loads(request.body)
-        if User.get(username = data["username"]).count() > 0:
+        if User.objects.filter(username = data["username"]).count() > 0:
             raise Exception
         print("aaaa", data)
         User(username=data["username"], password=data["password"]).save()
