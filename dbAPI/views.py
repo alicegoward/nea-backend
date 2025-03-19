@@ -21,21 +21,25 @@ def location_update(request):
         Location_data(datetime=data["datetime"], user=data["user"], lat=data["lat"], long=data["long"]).save()
         return JsonResponse({"success":True})
     except:
-        return JsonResponse({"success": False})
+        return JsonResponse({"success": False, "reason":"unknown error"})
 
-def user_info(request, user):
+def user_info(request, user, password):
     try:
-        user = model_to_dict(User.objects.get(username=user))
+        print(user,password)
+        user = model_to_dict(User.objects.get(username=user, password=password))
+        print(user)
         user["success"] = True
         return JsonResponse(user)
     except:
-        return JsonResponse({"success":False})
+        return JsonResponse({"success":False, "reason":"username / password combination does not exist"})
 
 def add_user(request):
     try:
         data = loads(request.body)
+        if User.get(username = data["username"]).count() > 0:
+            raise Exception
         print("aaaa", data)
-        User(username=data["username"]).save()
+        User(username=data["username"], password=data["password"]).save()
         return JsonResponse({"success":True})
     except:
-        return JsonResponse({"success": False})
+        return JsonResponse({"success": False, "reason":"user already taken"})

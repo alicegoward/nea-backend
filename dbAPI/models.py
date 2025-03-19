@@ -18,3 +18,4 @@ class Location_data(models.Model):
 
 class User(models.Model):
     username = models.CharField(max_length=200, primary_key=True)
+    password = models.CharField(max_length=200)
