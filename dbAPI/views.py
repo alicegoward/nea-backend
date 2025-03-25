@@ -9,7 +9,7 @@ def index(_):
     data = User.objects.all()
     out = {}
     for i in data:
-        out[i.pk] = model_to_dict(i)
+        data = model_to_dict(i)
     return JsonResponse(out)
 
 def location_update(request):
@@ -27,6 +27,7 @@ def user_info(_, user, password):
         user = model_to_dict(User.objects.get(username=user, password=password))
         print(user)
         user["success"] = True
+        user.pop("friends")
         return JsonResponse(user)
     except:
         return JsonResponse({"success":False, "reason":"username / password combination does not exist"})
@@ -59,4 +60,26 @@ def show_notification(_, user):
     Notification.objects.all().delete()
     return JsonResponse({"success": True, "notifications": data})
 
+def get_friends(_, user):
+    try:
+        friends = User.objects.get(username=user).friends
+        friend_data = {}
+        for i, friend in enumerate(friends.all()):
+            friend_data[i] = friend.username
+        return JsonResponse({"success": True, "names":friend_data})
+    except Exception as e:
+        return JsonResponse({"success": False, "reason":str(e)})
     
+def add_friend(request):
+    try:
+        data = loads(request.body)
+        requesting = data["user_requesting"]
+        requested = data["user_requested"]
+        usera = User.objects.get(username=requesting)
+        userb = User.objects.get(username=requested)
+        usera.friends.add(userb)
+        usera.save()
+        print(usera, userb, usera.friends.all(), userb.friends.all())
+        return JsonResponse({"success":True})
+    except:
+        return JsonResponse({"success": False, "reason":"user does not exist"})

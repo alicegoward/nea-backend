@@ -9,6 +9,10 @@ class Location_data(models.Model):
 class User(models.Model):
     username = models.CharField(max_length=200, primary_key=True)
     password = models.CharField(max_length=200)
+    friends = models.ManyToManyField("self", symmetrical=True)
+
+    def __str__(self):
+        return self.username
 
 class Notification(models.Model):
     user = models.CharField(max_length=200)
