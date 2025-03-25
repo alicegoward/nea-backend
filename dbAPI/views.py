@@ -73,13 +73,34 @@ def get_friends(_, user):
 def add_friend(request):
     try:
         data = loads(request.body)
-        requesting = data["user_requesting"]
-        requested = data["user_requested"]
-        usera = User.objects.get(username=requesting)
-        userb = User.objects.get(username=requested)
-        usera.friends.add(userb)
-        usera.save()
-        print(usera, userb, usera.friends.all(), userb.friends.all())
+        requesting = User.objects.get(username=data["user_requesting"])
+        requested = User.objects.get(username=data["user_requested"])
+        requested.pending_friends.add(requesting)
+        Notification(
+            user = requested, 
+            notification = f"{requesting} has requested to add you as a friend.", 
+            datetime = int(time.time())
+            ).save()
+        requesting.save()
         return JsonResponse({"success":True})
     except:
         return JsonResponse({"success": False, "reason":"user does not exist"})
+    
+def get_pending_requests(_, user):
+    try:
+        friends = User.objects.get(username=user).pending_friends
+        friend_data = {}
+        for i, friend in enumerate(friends.all()):
+            friend_data[i] = friend.username
+        return JsonResponse({"success": True, "names":friend_data})
+    except Exception as e:
+        return JsonResponse({"success": False, "reason":str(e)})
+    
+def update_friend_state(request):
+    data = loads(request.body)
+    accepting = User.objects.get(username=data["user_accepting"])
+    accepted = User.objects.get(username=data["user_accepted"])
+    accepting.pending_friends.remove(accepted)
+    if data["result"] == "accepted":
+        accepting.friends.add(accepted)
+    accepting.save()
