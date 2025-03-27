@@ -5,13 +5,6 @@ from .models import Location_data, User, Notification
 from random import randint
 import time
 
-def index(_):
-    data = User.objects.all()
-    out = {}
-    for i in data:
-        data = model_to_dict(i)
-    return JsonResponse(out)
-
 def location_update(request):
     try:
         data = loads(request.body)
@@ -21,10 +14,10 @@ def location_update(request):
     except:
         return JsonResponse({"success": False, "reason":"unknown error"})
 
-def user_info(_, user, password):
+def user_info(request):
     try:
-        print(user,password)
-        user = model_to_dict(User.objects.get(username=user, password=password))
+        data = loads(request.body)
+        user = model_to_dict(User.objects.get(username=data["username"], password=data["password"]))
         print(user)
         user["success"] = True
         user.pop("friends")
@@ -73,8 +66,8 @@ def get_friends(_, user):
 def add_friend(request):
     try:
         data = loads(request.body)
-        requesting = User.objects.get(username=data["user_requesting"])
-        requested = User.objects.get(username=data["user_requested"])
+        requesting = User.objects.get(username=data["userRequesting"])
+        requested = User.objects.get(username=data["userRequested"])
         requested.pending_friends.add(requesting)
         Notification(
             user = requested, 
@@ -82,7 +75,7 @@ def add_friend(request):
             datetime = int(time.time())
             ).save()
         requesting.save()
-        return JsonResponse({"success":True})
+        return JsonResponse({"success":True, "reason":"user successfully added"})
     except:
         return JsonResponse({"success": False, "reason":"user does not exist"})
     
@@ -98,8 +91,8 @@ def get_pending_requests(_, user):
     
 def update_friend_state(request):
     data = loads(request.body)
-    accepting = User.objects.get(username=data["user_accepting"])
-    accepted = User.objects.get(username=data["user_accepted"])
+    accepting = User.objects.get(username=data["userAccepting"])
+    accepted = User.objects.get(username=data["userAccepted"])
     accepting.pending_friends.remove(accepted)
     if data["result"] == "accepted":
         accepting.friends.add(accepted)
