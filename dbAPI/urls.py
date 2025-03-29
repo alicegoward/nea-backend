@@ -11,7 +11,6 @@ urlpatterns = [
     path("user/update_friend_state", views.update_friend_state, name="update_friend_state"),
     path("user/add_friend", views.add_friend, name="add_friend"),
     path("user/friends/<str:user>", views.get_friends, name="get_friends"),
-    path("user/friend_requests/<str:user>", views.get_pending_requests, name="get_pending_requests"),
     path("user/notifications/<str:user>", views.show_notification, name="show_notifications"),
 
 ]   

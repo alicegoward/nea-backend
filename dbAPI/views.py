@@ -55,11 +55,18 @@ def show_notification(_, user):
 
 def get_friends(_, user):
     try:
-        friends = User.objects.get(username=user).friends
+        user = User.objects.get(username=user)
         friend_data = {}
-        for i, friend in enumerate(friends.all()):
+        for i, friend in enumerate(user.friends.all()):
             friend_data[i] = friend.username
-        return JsonResponse({"success": True, "names":friend_data})
+        incoming_data = {}
+        for i, friend in enumerate(user.pending_friends.all()):
+            incoming_data[i] = friend.username
+        outgoing_data = {}
+        for i, friend in enumerate(User.objects.filter(pending_friends=user)):
+            outgoing_data[i] = friend.username
+        print(f"{friend_data}\n{incoming_data}\n{outgoing_data}")
+        return JsonResponse({"success": True, "names":friend_data, "incoming":incoming_data, "outgoing":outgoing_data})
     except Exception as e:
         return JsonResponse({"success": False, "reason":str(e)})
     
@@ -78,16 +85,6 @@ def add_friend(request):
         return JsonResponse({"success":True, "reason":"user successfully added"})
     except:
         return JsonResponse({"success": False, "reason":"user does not exist"})
-    
-def get_pending_requests(_, user):
-    try:
-        friends = User.objects.get(username=user).pending_friends
-        friend_data = {}
-        for i, friend in enumerate(friends.all()):
-            friend_data[i] = friend.username
-        return JsonResponse({"success": True, "names":friend_data})
-    except Exception as e:
-        return JsonResponse({"success": False, "reason":str(e)})
     
 def update_friend_state(request):
     data = loads(request.body)
