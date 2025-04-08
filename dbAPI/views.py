@@ -1,9 +1,28 @@
 from json import loads
 from django.forms.models import model_to_dict
 from django.http import JsonResponse
-from .models import Location_data, User, Notification
+from .models import Location_data, User, Notification, Route
 from random import randint
 import time
+
+def add_route(request):
+    try:
+        data = loads(request.body)
+        print("some route data", data)
+        route = Route(
+            user = data["username"],
+            end_lat = data["lat"],
+            end_long = data["long"],
+            end_time = data["endTime"]
+        )
+        route.save()
+        print(route)
+        for i in data["friends"].values():
+            route.participants.add(User.objects.get(username = i))
+        return JsonResponse({"success":True})
+    except Exception as e:
+        print(e)
+        return JsonResponse({"success": False, "reason":"unknown error"})
 
 def location_update(request):
     try:

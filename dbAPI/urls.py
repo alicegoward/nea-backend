@@ -3,8 +3,9 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    # ex: /polls/
     path("location/add", views.location_update, name="add_location"),
+
+    path("route/create", views.add_route, name = "add_route"),
 
     path("user/login", views.user_info, name="user"),
     path("user/add", views.add_user, name="user"),

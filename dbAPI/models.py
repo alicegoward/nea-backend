@@ -14,6 +14,16 @@ class User(models.Model):
 
     def __str__(self):
         return self.username
+    
+class Route(models.Model):
+    user = models.CharField(max_length=200)
+    end_lat = models.FloatField()
+    end_long = models.FloatField()
+    end_time = models.IntegerField()
+    participants = models.ManyToManyField("user")
+
+    def __str__(self):
+        return "route"+str(self.end_lat)+self.user+str(self.end_long)
 
 class Notification(models.Model):
     user = models.CharField(max_length=200)
