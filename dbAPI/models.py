@@ -16,6 +16,7 @@ class User(models.Model):
         return self.username
     
 class Route(models.Model):
+    routeName = models.CharField(max_length=200)
     user = models.CharField(max_length=200)
     end_lat = models.FloatField()
     end_long = models.FloatField()

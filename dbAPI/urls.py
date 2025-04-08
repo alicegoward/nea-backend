@@ -6,6 +6,7 @@ urlpatterns = [
     path("location/add", views.location_update, name="add_location"),
 
     path("route/create", views.add_route, name = "add_route"),
+    path("route/<str:user>", views.getRoutes, name="get_route"),
 
     path("user/login", views.user_info, name="user"),
     path("user/add", views.add_user, name="user"),

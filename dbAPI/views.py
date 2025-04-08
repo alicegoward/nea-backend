@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from .models import Location_data, User, Notification, Route
 from random import randint
 import time
+from django.db.models import Q
 
 def add_route(request):
     try:
@@ -13,7 +14,8 @@ def add_route(request):
             user = data["username"],
             end_lat = data["lat"],
             end_long = data["long"],
-            end_time = data["endTime"]
+            end_time = data["endTime"],
+            routeName = data["name"]
         )
         route.save()
         print(route)
@@ -23,6 +25,24 @@ def add_route(request):
     except Exception as e:
         print(e)
         return JsonResponse({"success": False, "reason":"unknown error"})
+    
+def getRoutes(_, user):
+    routes = Route.objects.filter(Q(user=user) | Q(participants=user))
+    print(routes)
+    data = {"success":True, "data":{}}
+    for i, route in enumerate(routes):
+        route_data = {
+            "username": route.user,
+            "lat": route.end_lat,
+            "long": route.end_long,
+            "endTime": route.end_time,
+            "name": route.routeName,
+            "friends":{}
+            }
+        for j, friend in enumerate(route.participants.all()):
+            route_data["friends"][j] = friend.username
+        data["data"][i] = route_data
+    return JsonResponse(data)
 
 def location_update(request):
     try:
