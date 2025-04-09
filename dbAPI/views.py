@@ -5,6 +5,7 @@ from .models import Location_data, User, Notification, Route
 from random import randint
 import time
 from django.db.models import Q
+import json
 
 def add_route(request):
     try:
@@ -26,6 +27,9 @@ def add_route(request):
         print(e)
         return JsonResponse({"success": False, "reason":"unknown error"})
     
+def sampleRoute(_):
+    return JsonResponse(json.load(open("dbAPI/sample.txt","r")))
+
 def getRoutes(_, user):
     routes = Route.objects.filter(Q(user=user) | Q(participants=user))
     print(routes)
