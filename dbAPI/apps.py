@@ -1,6 +1,29 @@
 from django.apps import AppConfig
-
+from dbAPI.graph import GeoPoint, Graph, Edge
+import osmnx
 
 class dbAPIConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'dbAPI'
+
+    def ready(self):
+        from django.conf import settings
+        print("here")
+        raw_map = osmnx.graph.graph_from_bbox((-0.23535,51.47026,-0.20488,51.46260 ), network_type="walk", simplify=True)
+        print(raw_map)
+        settings.G = Graph()
+        for node_id, data in raw_map.nodes(data=True):
+            settings.G.add_node(node_id, GeoPoint(data["y"], data["x"]))
+        for u, v, data in raw_map.edges(data=True):
+            line = [settings.G.graph[u].position]
+            if "geometry" in data:
+                for point in data["geometry"].coords:
+                    line.append(GeoPoint(point[1], point[0]))
+            line.append(settings.G.graph[v].position)
+            edge = Edge(data["length"], tuple(line))
+            if v in settings.G.graph[u].neighbours:
+                if settings.G.graph[u].neighbours[v].length > data["length"]:
+                    settings.G.graph[u].neighbours[v] = edge
+                    settings.G.graph[v].neighbours[u] = edge
+            else:
+                settings.G.add_edge(u, v, edge)

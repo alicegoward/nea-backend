@@ -6,6 +6,8 @@ from random import randint
 import time
 from django.db.models import Q
 import json
+from django.conf import settings
+from random import choice
 
 def add_route(request):
     try:
@@ -28,7 +30,21 @@ def add_route(request):
         return JsonResponse({"success": False, "reason":"unknown error"})
     
 def sampleRoute(_):
-    return JsonResponse(json.load(open("dbAPI/sample.txt","r")))
+    start = choice(list(settings.G.graph.keys()))
+    end = choice(list(settings.G.graph.keys()))
+    route = settings.G.dijkstra(start, (end,))
+    node = end
+    path = [settings.G.graph[end].position]
+    while node != start:
+        next_node = route[node].parent
+        geometry = list(settings.G.graph[node].neighbours[next_node].geometry)
+        if geometry[0] == path[-1]: path+=geometry
+        else: path+=geometry[::-1]
+        node = next_node
+    data = {}
+    for idx, point in enumerate(path):
+        data[idx] = {"lat": point.lat, "long": point.long}
+    return JsonResponse(data)
 
 def getRoutes(_, user):
     routes = Route.objects.filter(Q(user=user) | Q(participants=user))
