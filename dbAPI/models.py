@@ -4,7 +4,7 @@ class Location_data(models.Model):
     user = models.CharField(max_length=200)
     lat = models.FloatField()
     long = models.FloatField()
-    datetime = models.IntegerField()
+    datetime = models.BigIntegerField()
 
 class User(models.Model):
     username = models.CharField(max_length=200, primary_key=True)
@@ -15,12 +15,24 @@ class User(models.Model):
     def __str__(self):
         return self.username
     
+class PathNode(models.Model):
+    node_id = models.BigIntegerField()
+    parent_node = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    child_node = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    path_on = models.ForeignKey('Path', on_delete=models.CASCADE)
+    dist_to_end = models.FloatField()
+    
+class Path(models.Model):
+    start_node = models.ForeignKey(PathNode, on_delete=models.PROTECT, null=True, related_name='+')
+    end_node = models.ForeignKey(PathNode, on_delete=models.PROTECT, null=True, related_name='+')
+    account = models.ForeignKey(User, on_delete=models.CASCADE)
+    
 class Route(models.Model):
     routeName = models.CharField(max_length=200)
     user = models.CharField(max_length=200)
     end_lat = models.FloatField()
     end_long = models.FloatField()
-    end_time = models.IntegerField()
+    end_time = models.BigIntegerField()
     participants = models.ManyToManyField("user")
 
     def __str__(self):

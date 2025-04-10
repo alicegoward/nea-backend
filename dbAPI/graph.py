@@ -64,7 +64,7 @@ class Graph:
                 node_id = id
         return node_id
     
-    def closest_pair_from_lat_long(self, point: GeoPoint) -> tuple[tuple[int, int], float]:
+    def closest_pair_from_lat_long(self, point: GeoPoint) -> tuple[int, int]:
         closest_nodes = {}
         for i in range(5):
             closest_nodes[i] = math.inf
@@ -75,7 +75,7 @@ class Graph:
                 closest_nodes.pop(max_node)
                 closest_nodes[id] = dist
                 max_node = max(closest_nodes.items(), key=lambda k: k[1])[0]
-        node_a, node_b,dist_to_a, min_dist = 0, 0, 0, math.inf
+        node_a, node_b, min_dist = 0, 0, math.inf
         for a_id in closest_nodes.keys():
             for b_id in self.graph[a_id].neighbours:
                 b_x = self.graph[b_id].position.long - self.graph[a_id].position.long
@@ -99,5 +99,5 @@ class Graph:
                 dist = (o_x-p_x)**2 + (o_y-p_y)**2
                 print(dist)
                 if min_dist > dist:
-                    node_a, node_b, dist_to_a, min_dist = a_id, b_id, (p_x**2 + p_y**2)**(1/2), dist
-        return (node_a, node_b), dist_to_a
+                    node_a, node_b, min_dist = a_id, b_id, dist
+        return node_a, node_b

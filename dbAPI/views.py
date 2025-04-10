@@ -1,12 +1,13 @@
 from json import loads
 from django.forms.models import model_to_dict
 from django.http import JsonResponse
-from .models import Location_data, User, Notification, Route
+from .models import Location_data, User, Notification, Route, Path, PathNode
 from random import randint
 import time
 from django.db.models import Q
 from django.conf import settings
 from dbAPI.graph import GeoPoint
+import math
 
 def add_route(request):
     try:
@@ -33,21 +34,53 @@ def sampleRoute(request):
     start_coord = GeoPoint(data["start"]["lat"], data["start"]["long"])
     end_coord = GeoPoint(data["end"]["lat"], data["end"]["long"])
     print(f"coords {start_coord}, {end_coord}")
-    start_nodes, dist_to_a = settings.G.closest_pair_from_lat_long(start_coord)
-    start = start_nodes[1]
+    a, b = settings.G.closest_pair_from_lat_long(start_coord)
+    dist_to_a = ((settings.G.graph[a].position.long-start_coord.long*111000*math.cos(math.radians(start_coord.lat)))**2 
+                 + (settings.G.graph[a].position.lat-start_coord.lat*111000)**2)**(1/2)
+    dist_to_b = ((settings.G.graph[b].position.long-start_coord.long*111000*math.cos(math.radians(start_coord.lat)))**2 
+                 + (settings.G.graph[b].position.lat-start_coord.lat*111000)**2)**(1/2)
     end = settings.G.closest_from_lat_long(end_coord)
+    if ((settings.G.graph[a].position.long-end_coord.long)**2 + (settings.G.graph[a].position.lat-end_coord.lat)**2 < 
+        (settings.G.graph[b].position.long-end_coord.long)**2 + (settings.G.graph[b].position.lat-end_coord.lat)**2):
+        start = a
+    else:
+        start = b
+
+    path_db = Path(account = User.objects.get(username = data["user"]))
+
     print(f"nodes: {start}, {end}")
     route = settings.G.dijkstra(start, (end,))
     node = end
     path = [settings.G.graph[end].position]
-    while node != start:
+    nodes_on_route = [[end, route[end].dist]]
+    while node != a and node != b:
         next_node = route[node].parent
         geometry = list(settings.G.graph[node].neighbours[next_node].geometry)
         if geometry[0] == path[-1]: path+=geometry
         else: path+=geometry[::-1]
+        nodes_on_route.append([next_node, route[next_node].dist])
         node = next_node
-    path.append(start_coord)
-    path.append(settings.G.graph[start_nodes[0]].position)
+
+    nodes_on_route.append([node, route[node].dist])
+    
+    nodes_db = [PathNode(node_id = i[0], path_on = path_db, dist_to_end = i[1]) for i in nodes_on_route]
+    
+    path_db.save()
+    for i in nodes_db: i.save()
+
+
+    for i in range(len(nodes_db)-1):
+        nodes_db[i].parent_node = nodes_db[i+1]
+        nodes_db[i+1].child_node = nodes_db[i]
+
+    for i in nodes_db: i.save()
+    path_db.start_node = nodes_db[-1]
+    path_db.end_node = nodes_db[0]
+    path_db.save()
+
+
+    print(nodes_on_route)
+
     data = {}
     for idx, point in enumerate(path):
         data[idx] = {"lat": point.lat, "long": point.long}
