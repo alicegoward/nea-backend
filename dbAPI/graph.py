@@ -1,4 +1,5 @@
 import heapq
+import math
 
 class GeoPoint:
     def __init__(self, lat: float, long: float) -> None:
@@ -53,3 +54,50 @@ class Graph:
             if finished:
                 return visited
         return {}
+    
+    def closest_from_lat_long(self, point: GeoPoint) -> int:
+        min_dist, node_id = math.inf, 0
+        for id, node in self.graph.items():
+            dist = (point.long-node.position.long)**2 + (point.lat-node.position.lat)**2
+            if dist < min_dist:
+                min_dist = dist
+                node_id = id
+        return node_id
+    
+    def closest_pair_from_lat_long(self, point: GeoPoint) -> tuple[tuple[int, int], float]:
+        closest_nodes = {}
+        for i in range(5):
+            closest_nodes[i] = math.inf
+        max_node = 0
+        for id, node in self.graph.items():
+            dist = (point.long-node.position.long)**2 + (point.lat-node.position.lat)**2
+            if dist < closest_nodes[max_node]:
+                closest_nodes.pop(max_node)
+                closest_nodes[id] = dist
+                max_node = max(closest_nodes.items(), key=lambda k: k[1])[0]
+        node_a, node_b,dist_to_a, min_dist = 0, 0, 0, math.inf
+        for a_id in closest_nodes.keys():
+            for b_id in self.graph[a_id].neighbours:
+                b_x = self.graph[b_id].position.long - self.graph[a_id].position.long
+                b_y = self.graph[b_id].position.lat - self.graph[a_id].position.lat
+                p_x = point.long - self.graph[a_id].position.long
+                p_y = point.lat - self.graph[a_id].position.lat
+                m_ab = (-b_y)/(-b_x)
+                if m_ab == 0: m_ab = 1e-10
+                m_op = -1/m_ab
+                c_op = p_y-m_op*p_x
+                o_x = (-c_op)/(m_op-m_ab)
+                o_y = m_op*o_x+c_op
+                abs_ob = math.sqrt((o_y-b_y)**2+(o_x-b_x)**2)
+                abs_oa = math.sqrt(o_y ** 2 + o_x ** 2)
+                abs_ab = math.sqrt((-b_y)**2+(-b_x)**2)
+                if max(abs_ob, abs_oa) > abs_ab:
+                    if abs_oa < abs_ob:
+                        o_x, o_y = 0, 0
+                    else:
+                        o_x, o_y = b_x, b_y
+                dist = (o_x-p_x)**2 + (o_y-p_y)**2
+                print(dist)
+                if min_dist > dist:
+                    node_a, node_b, dist_to_a, min_dist = a_id, b_id, (p_x**2 + p_y**2)**(1/2), dist
+        return (node_a, node_b), dist_to_a

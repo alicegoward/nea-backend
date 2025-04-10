@@ -5,9 +5,8 @@ from .models import Location_data, User, Notification, Route
 from random import randint
 import time
 from django.db.models import Q
-import json
 from django.conf import settings
-from random import choice
+from dbAPI.graph import GeoPoint
 
 def add_route(request):
     try:
@@ -29,9 +28,15 @@ def add_route(request):
         print(e)
         return JsonResponse({"success": False, "reason":"unknown error"})
     
-def sampleRoute(_):
-    start = choice(list(settings.G.graph.keys()))
-    end = choice(list(settings.G.graph.keys()))
+def sampleRoute(request):
+    data = loads(request.body)
+    start_coord = GeoPoint(data["start"]["lat"], data["start"]["long"])
+    end_coord = GeoPoint(data["end"]["lat"], data["end"]["long"])
+    print(f"coords {start_coord}, {end_coord}")
+    start_nodes, dist_to_a = settings.G.closest_pair_from_lat_long(start_coord)
+    start = start_nodes[1]
+    end = settings.G.closest_from_lat_long(end_coord)
+    print(f"nodes: {start}, {end}")
     route = settings.G.dijkstra(start, (end,))
     node = end
     path = [settings.G.graph[end].position]
@@ -41,6 +46,8 @@ def sampleRoute(_):
         if geometry[0] == path[-1]: path+=geometry
         else: path+=geometry[::-1]
         node = next_node
+    path.append(start_coord)
+    path.append(settings.G.graph[start_nodes[0]].position)
     data = {}
     for idx, point in enumerate(path):
         data[idx] = {"lat": point.lat, "long": point.long}
