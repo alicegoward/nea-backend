@@ -64,6 +64,32 @@ class Graph:
                 node_id = id
         return node_id
     
+    def dist_to_path_from_node(self, a_id: int, point: GeoPoint) -> dict[int, float]:
+        result = dict()
+        for b_id in self.graph[a_id].neighbours:
+            b_x = (self.graph[b_id].position.long - self.graph[a_id].position.long) * 111000 * math.cos(math.radians(self.graph[a_id].position.lat))
+            b_y = (self.graph[b_id].position.lat - self.graph[a_id].position.lat) * 111000
+            p_x = point.long - self.graph[a_id].position.long
+            p_y = point.lat - self.graph[a_id].position.lat
+            m_ab = (-b_y)/(-b_x)
+            if m_ab == 0: m_ab = 1e-10
+            m_op = -1/m_ab
+            c_op = p_y-m_op*p_x
+            o_x = (-c_op)/(m_op-m_ab)
+            o_y = m_op*o_x+c_op
+            abs_ob = math.sqrt((o_y-b_y)**2+(o_x-b_x)**2)
+            abs_oa = math.sqrt(o_y ** 2 + o_x ** 2)
+            abs_ab = math.sqrt((-b_y)**2+(-b_x)**2)
+            if max(abs_ob, abs_oa) > abs_ab:
+                if abs_oa < abs_ob:
+                    o_x, o_y = 0, 0
+                else:
+                    o_x, o_y = b_x, b_y
+            dist = ((o_x-p_x)**2 + (o_y-p_y)**2)**0.5
+            print(dist)
+            result[b_id] = dist
+        return result
+    
     def closest_pair_from_lat_long(self, point: GeoPoint) -> tuple[int, int]:
         closest_nodes = {}
         for i in range(5):
@@ -77,27 +103,8 @@ class Graph:
                 max_node = max(closest_nodes.items(), key=lambda k: k[1])[0]
         node_a, node_b, min_dist = 0, 0, math.inf
         for a_id in closest_nodes.keys():
-            for b_id in self.graph[a_id].neighbours:
-                b_x = self.graph[b_id].position.long - self.graph[a_id].position.long
-                b_y = self.graph[b_id].position.lat - self.graph[a_id].position.lat
-                p_x = point.long - self.graph[a_id].position.long
-                p_y = point.lat - self.graph[a_id].position.lat
-                m_ab = (-b_y)/(-b_x)
-                if m_ab == 0: m_ab = 1e-10
-                m_op = -1/m_ab
-                c_op = p_y-m_op*p_x
-                o_x = (-c_op)/(m_op-m_ab)
-                o_y = m_op*o_x+c_op
-                abs_ob = math.sqrt((o_y-b_y)**2+(o_x-b_x)**2)
-                abs_oa = math.sqrt(o_y ** 2 + o_x ** 2)
-                abs_ab = math.sqrt((-b_y)**2+(-b_x)**2)
-                if max(abs_ob, abs_oa) > abs_ab:
-                    if abs_oa < abs_ob:
-                        o_x, o_y = 0, 0
-                    else:
-                        o_x, o_y = b_x, b_y
-                dist = (o_x-p_x)**2 + (o_y-p_y)**2
-                print(dist)
-                if min_dist > dist:
-                    node_a, node_b, min_dist = a_id, b_id, dist
+            option = min(self.dist_to_path_from_node(a_id, point).items(), key = lambda k: k[1])
+            if option[1] < min_dist:
+                node_b, min_dist = option
+                node_a = a_id
         return node_a, node_b

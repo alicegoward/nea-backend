@@ -1,7 +1,6 @@
 from django.db import models
 
 class Location_data(models.Model):
-    user = models.CharField(max_length=200)
     lat = models.FloatField()
     long = models.FloatField()
     datetime = models.BigIntegerField()
@@ -23,9 +22,10 @@ class PathNode(models.Model):
     dist_to_end = models.FloatField()
     
 class Path(models.Model):
-    start_node = models.ForeignKey(PathNode, on_delete=models.PROTECT, null=True, related_name='+')
-    end_node = models.ForeignKey(PathNode, on_delete=models.PROTECT, null=True, related_name='+')
+    start_node = models.ForeignKey(PathNode, on_delete=models.SET_NULL, null=True, related_name='+')
+    end_node = models.ForeignKey(PathNode, on_delete=models.SET_NULL, null=True, related_name='+')
     account = models.ForeignKey(User, on_delete=models.CASCADE)
+    current_location = models.ForeignKey(Location_data, on_delete=models.SET_NULL, null=True, related_name='+')
     
 class Route(models.Model):
     routeName = models.CharField(max_length=200)

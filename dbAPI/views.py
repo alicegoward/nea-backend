@@ -35,10 +35,6 @@ def sampleRoute(request):
     end_coord = GeoPoint(data["end"]["lat"], data["end"]["long"])
     print(f"coords {start_coord}, {end_coord}")
     a, b = settings.G.closest_pair_from_lat_long(start_coord)
-    dist_to_a = ((settings.G.graph[a].position.long-start_coord.long*111000*math.cos(math.radians(start_coord.lat)))**2 
-                 + (settings.G.graph[a].position.lat-start_coord.lat*111000)**2)**(1/2)
-    dist_to_b = ((settings.G.graph[b].position.long-start_coord.long*111000*math.cos(math.radians(start_coord.lat)))**2 
-                 + (settings.G.graph[b].position.lat-start_coord.lat*111000)**2)**(1/2)
     end = settings.G.closest_from_lat_long(end_coord)
     if ((settings.G.graph[a].position.long-end_coord.long)**2 + (settings.G.graph[a].position.lat-end_coord.lat)**2 < 
         (settings.G.graph[b].position.long-end_coord.long)**2 + (settings.G.graph[b].position.lat-end_coord.lat)**2):
@@ -52,7 +48,7 @@ def sampleRoute(request):
     route = settings.G.dijkstra(start, (end,))
     node = end
     path = [settings.G.graph[end].position]
-    nodes_on_route = [[end, route[end].dist]]
+    nodes_on_route = []
     while node != a and node != b:
         next_node = route[node].parent
         geometry = list(settings.G.graph[node].neighbours[next_node].geometry)
@@ -60,11 +56,11 @@ def sampleRoute(request):
         else: path+=geometry[::-1]
         nodes_on_route.append([next_node, route[next_node].dist])
         node = next_node
-
-    nodes_on_route.append([node, route[node].dist])
+    if node == a: nodes_on_route+=[[b, settings.G.graph[a].neighbours[b].length]]
+    else: nodes_on_route+=[[a, settings.G.graph[b].neighbours[a].length]]
     
     nodes_db = [PathNode(node_id = i[0], path_on = path_db, dist_to_end = i[1]) for i in nodes_on_route]
-    
+
     path_db.save()
     for i in nodes_db: i.save()
 
@@ -104,14 +100,47 @@ def getRoutes(_, user):
         data["data"][i] = route_data
     return JsonResponse(data)
 
-def location_update(request):
-    try:
-        data = loads(request.body)
-        print("aaaa", data)
-        Location_data(datetime=data["datetime"], user=data["user"], lat=data["lat"], long=data["long"]).save()
-        return JsonResponse({"success":True})
-    except:
-        return JsonResponse({"success": False, "reason":"unknown error"})
+def location_update(request): 
+    data = loads(request.body)
+    print("aaaa", data)
+    path = Path.objects.filter(account = User.objects.get(username = data["user"]))
+    if len(path.all()) == 1: path = path.all()[0]
+    else: return JsonResponse(dict())
+    if path.current_location != None: path.current_location.delete()
+    location = Location_data(datetime=data["datetime"], lat=data["lat"], long=data["long"])
+    location.save()
+    previous_node = path.start_node
+    current_node = previous_node.child_node
+    next_node = current_node.child_node
+    closest_lines_to_node = settings.G.dist_to_path_from_node(current_node.node_id, GeoPoint(location.lat, location.long))
+    while closest_lines_to_node[next_node.node_id] < closest_lines_to_node[previous_node.node_id]:
+        print("next section")
+        path.start_node = current_node
+        previous_node.delete()
+        previous_node = current_node
+        current_node = next_node
+        next_node = current_node.child_node
+        closest_lines_to_node = settings.G.dist_to_path_from_node(current_node.node_id, GeoPoint(location.lat, location.long))
+    if closest_lines_to_node[previous_node.node_id] > 30:
+        print("gone off course")
+        Notification(notification="gone off course "+str(randint(0,1000)), user=data["user"], datetime=int(time.time())).save()
+
+    geometry_path = [settings.G.graph[current_node.node_id].position]
+    while next_node != None:
+        next_node
+        print(current_node.node_id, next_node.node_id, settings.G.graph[current_node.node_id].neighbours)
+        geometry = list(settings.G.graph[current_node.node_id].neighbours[next_node.node_id].geometry)
+        if geometry[0] == geometry_path[-1]: geometry_path+=geometry
+        else: geometry_path+=geometry[::-1]
+        current_node = next_node
+        next_node = current_node.child_node
+    geometry_path.insert(0,GeoPoint(location.lat, location.long))
+    path.current_location = location
+    path.save()
+    data = {}
+    for idx, point in enumerate(geometry_path):
+        data[idx] = {"lat": point.lat, "long": point.long}
+    return JsonResponse(data)
 
 def user_info(request):
     try:
@@ -142,7 +171,10 @@ def create_notification(_, user):
     except Exception as e:
         print(e)
         return JsonResponse({"success":False})
-
+    
+def deactivate(_, user):
+    Path.objects.filter(account = User.objects.get(username=user)).delete()
+    return JsonResponse({'success':True})
 
 def show_notification(_, user):
     notifications = Notification.objects.filter(user=user).order_by("datetime")
