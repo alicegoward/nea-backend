@@ -26,6 +26,7 @@ class Path(models.Model):
     end_node = models.ForeignKey(PathNode, on_delete=models.SET_NULL, null=True, related_name='+')
     account = models.ForeignKey(User, on_delete=models.CASCADE)
     current_location = models.ForeignKey(Location_data, on_delete=models.SET_NULL, null=True, related_name='+')
+    on_path = models.BooleanField(default=True)
     
 class Route(models.Model):
     routeName = models.CharField(max_length=200)

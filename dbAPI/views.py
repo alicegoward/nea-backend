@@ -121,14 +121,15 @@ def location_update(request):
         current_node = next_node
         next_node = current_node.child_node
         closest_lines_to_node = settings.G.dist_to_path_from_node(current_node.node_id, GeoPoint(location.lat, location.long))
-    if closest_lines_to_node[previous_node.node_id] > 30:
-        print("gone off course")
-        Notification(notification="gone off course "+str(randint(0,1000)), user=data["user"], datetime=int(time.time())).save()
+    if closest_lines_to_node[previous_node.node_id] > 0.001:
+        print("gone off course"+ str(closest_lines_to_node[previous_node.node_id]))
+        if path.on_path:
+            Notification(notification="gone off course "+str(randint(0,1000)), user=data["user"], datetime=int(time.time())).save()
+            path.on_path = False
 
     geometry_path = [settings.G.graph[current_node.node_id].position]
     while next_node != None:
         next_node
-        print(current_node.node_id, next_node.node_id, settings.G.graph[current_node.node_id].neighbours)
         geometry = list(settings.G.graph[current_node.node_id].neighbours[next_node.node_id].geometry)
         if geometry[0] == geometry_path[-1]: geometry_path+=geometry
         else: geometry_path+=geometry[::-1]
