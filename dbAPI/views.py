@@ -7,7 +7,6 @@ import time
 from django.db.models import Q
 from django.conf import settings
 from dbAPI.graph import GeoPoint
-import math
 
 def add_route(request):
     try:
@@ -30,9 +29,19 @@ def add_route(request):
         return JsonResponse({"success": False, "reason":"unknown error"})
     
 def sampleRoute(request):
+    tolerance = 2 * 60 * 1000
     data = loads(request.body)
     start_coord = GeoPoint(data["start"]["lat"], data["start"]["long"])
-    end_coord = GeoPoint(data["end"]["lat"], data["end"]["long"])
+    # TODO make the android equivalent of this in terms of what data sent
+    based_on_route = Route.objects.get(routeName = data["route"])
+    other_paths = Path.objects.filter(related_route = based_on_route)
+    path_db = Path(account = User.objects.get(username = data["user"]), related_route = based_on_route)
+    print("end time: "+str(based_on_route.end_time)+" start time "+str(data["datetime"]))
+    max_time_millis = based_on_route.end_time - data["datetime"] + tolerance
+    max_dist = max_time_millis * 4800 / (1000 * 60 * 60) 
+    end_coord = GeoPoint(based_on_route.end_lat, based_on_route.end_long)
+    print(other_paths, max_dist)
+
     print(f"coords {start_coord}, {end_coord}")
     a, b = settings.G.closest_pair_from_lat_long(start_coord)
     end = settings.G.closest_from_lat_long(end_coord)
@@ -41,8 +50,6 @@ def sampleRoute(request):
         start = a
     else:
         start = b
-
-    path_db = Path(account = User.objects.get(username = data["user"]))
 
     print(f"nodes: {start}, {end}")
     route = settings.G.dijkstra(start, (end,))
@@ -60,7 +67,6 @@ def sampleRoute(request):
     else: nodes_on_route+=[[a, settings.G.graph[b].neighbours[a].length]]
     
     nodes_db = [PathNode(node_id = i[0], path_on = path_db, dist_to_end = i[1]) for i in nodes_on_route]
-
     path_db.save()
     for i in nodes_db: i.save()
 
@@ -74,13 +80,12 @@ def sampleRoute(request):
     path_db.end_node = nodes_db[0]
     path_db.save()
 
-
     print(nodes_on_route)
 
     data = {}
     for idx, point in enumerate(path):
         data[idx] = {"lat": point.lat, "long": point.long}
-    return JsonResponse(data)
+    return JsonResponse({"geometry":data, "dist":0})
 
 def getRoutes(_, user):
     routes = Route.objects.filter(Q(user=user) | Q(participants=user))
@@ -145,11 +150,13 @@ def location_update(request):
             current_node = next_node
             next_node = current_node.child_node
     geometry_path.insert(0,GeoPoint(path.current_location.lat, path.current_location.long))
+    path.offset_from_start = ((path.current_location.lat - settings.G.graph[path.start_node.node_id].position.lat)**2 + 
+                              (path.current_location.long - settings.G.graph[path.start_node.node_id].position.long)**2) ** (1/2)
     path.save()
     data = {}
     for idx, point in enumerate(geometry_path):
         data[idx] = {"lat": point.lat, "long": point.long}
-    return JsonResponse(data)
+    return JsonResponse({"geometry":data, "dist":path.start_node.dist_to_end - path.offset_from_start})
 
 def user_info(request):
     try:

@@ -27,6 +27,8 @@ class Path(models.Model):
     account = models.ForeignKey(User, on_delete=models.CASCADE)
     current_location = models.ForeignKey(Location_data, on_delete=models.SET_NULL, null=True, related_name='+')
     on_path = models.BooleanField(default=True)
+    offset_from_start = models.FloatField(null=True)
+    related_route = models.ForeignKey('Route', on_delete=models.CASCADE, related_name='+', null=True)
     
 class Route(models.Model):
     routeName = models.CharField(max_length=200)
