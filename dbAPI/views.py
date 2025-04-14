@@ -103,40 +103,48 @@ def getRoutes(_, user):
 def location_update(request): 
     data = loads(request.body)
     print("aaaa", data)
-    path = Path.objects.filter(account = User.objects.get(username = data["user"]))
-    if len(path.all()) == 1: path = path.all()[0]
-    else: return JsonResponse(dict())
-    if path.current_location != None: path.current_location.delete()
-    location = Location_data(datetime=data["datetime"], lat=data["lat"], long=data["long"])
-    location.save()
+    path = Path.objects.select_related('current_location').filter(account__username=data["user"]).first()
+    if path is None:
+        return JsonResponse({})
+    if path.current_location is not None:
+        path.current_location.datetime = data["datetime"]
+        path.current_location.lat = data["lat"]
+        path.current_location.long = data["long"]
+        path.current_location.save()
+    else:
+        path.current_location = Location_data(datetime=data["datetime"], lat=data["lat"], long=data["long"])
+        path.current_location.save()
+
+    print(path.start_node)
     previous_node = path.start_node
     current_node = previous_node.child_node
-    next_node = current_node.child_node
-    closest_lines_to_node = settings.G.dist_to_path_from_node(current_node.node_id, GeoPoint(location.lat, location.long))
-    while closest_lines_to_node[next_node.node_id] < closest_lines_to_node[previous_node.node_id]:
-        print("next section")
-        path.start_node = current_node
-        previous_node.delete()
-        previous_node = current_node
-        current_node = next_node
-        next_node = current_node.child_node
-        closest_lines_to_node = settings.G.dist_to_path_from_node(current_node.node_id, GeoPoint(location.lat, location.long))
-    if closest_lines_to_node[previous_node.node_id] > 0.001:
-        print("gone off course"+ str(closest_lines_to_node[previous_node.node_id]))
-        if path.on_path:
-            Notification(notification="gone off course "+str(randint(0,1000)), user=data["user"], datetime=int(time.time())).save()
-            path.on_path = False
-
     geometry_path = [settings.G.graph[current_node.node_id].position]
-    while next_node != None:
-        next_node
-        geometry = list(settings.G.graph[current_node.node_id].neighbours[next_node.node_id].geometry)
-        if geometry[0] == geometry_path[-1]: geometry_path+=geometry
-        else: geometry_path+=geometry[::-1]
-        current_node = next_node
+    if current_node.child_node is not None: 
         next_node = current_node.child_node
-    geometry_path.insert(0,GeoPoint(location.lat, location.long))
-    path.current_location = location
+        closest_lines_to_node = settings.G.dist_to_path_from_node(current_node.node_id, GeoPoint(path.current_location.lat, path.current_location.long))
+        while closest_lines_to_node[next_node.node_id] < closest_lines_to_node[previous_node.node_id]:
+            print("next section")
+            path.start_node = current_node
+            print(path.start_node)
+            previous_node.delete()
+            previous_node = current_node
+            current_node = next_node
+            next_node = current_node.child_node
+            closest_lines_to_node = settings.G.dist_to_path_from_node(current_node.node_id, GeoPoint(path.current_location.lat, path.current_location.long))
+            if next_node is None: break
+        if closest_lines_to_node[previous_node.node_id] > 0.001:
+            print("gone off course"+ str(closest_lines_to_node[previous_node.node_id]))
+            if path.on_path:
+                Notification(notification="gone off course "+str(randint(0,1000)), user=data["user"], datetime=int(time.time())).save()
+                path.on_path = False
+
+        while next_node != None:
+            geometry = list(settings.G.graph[current_node.node_id].neighbours[next_node.node_id].geometry)
+            if geometry[0] == geometry_path[-1]: geometry_path+=geometry
+            else: geometry_path+=geometry[::-1]
+            current_node = next_node
+            next_node = current_node.child_node
+    geometry_path.insert(0,GeoPoint(path.current_location.lat, path.current_location.long))
     path.save()
     data = {}
     for idx, point in enumerate(geometry_path):
