@@ -13,13 +13,17 @@ class User(models.Model):
 
     def __str__(self):
         return self.username
-    
+
+class Waypoint(models.Model):
+    pass
+
 class PathNode(models.Model):
     node_id = models.BigIntegerField()
     parent_node = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     child_node = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     path_on = models.ForeignKey('Path', on_delete=models.CASCADE)
     dist_to_end = models.FloatField()
+    waypointID = models.ForeignKey(Waypoint, on_delete=models.SET_NULL, null=True)
     
 class Path(models.Model):
     start_node = models.ForeignKey(PathNode, on_delete=models.SET_NULL, null=True, related_name='+')
@@ -40,6 +44,7 @@ class Route(models.Model):
 
     def __str__(self):
         return "route"+str(self.end_lat)+self.user+str(self.end_long)
+
 
 class Notification(models.Model):
     user = models.CharField(max_length=200)

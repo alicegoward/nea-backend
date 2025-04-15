@@ -8,6 +8,11 @@ class GeoPoint:
     def __str__(self):
         return f"lat: {self.lat}, long: {self.long}"
 
+class NodeWithOffset:
+    def __init__(self, node_id, dist_from_now):
+        self.node_id, self.dist_from_now = node_id, dist_from_now
+
+
 class Edge:
     def __init__(self, length: float, geometry: tuple[GeoPoint, ...]):
         self.length = length
@@ -22,7 +27,7 @@ class Node:
         return f"lat: {self.position.lat}, long: {self.position.long}\nneighbours: {self.neighbours}"
 
 class DijkstraNode:
-    def __init__(self, distance: float, parent: int) -> None:
+    def __init__(self, distance: float, parent) -> None:
         self.parent = parent
         self.dist = distance
 

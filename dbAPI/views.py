@@ -1,12 +1,15 @@
 from json import loads
 from django.forms.models import model_to_dict
 from django.http import JsonResponse
+from networkx.algorithms.shortest_paths.weighted import dijkstra_path
+
 from .models import Location_data, User, Notification, Route, Path, PathNode
 from random import randint
 import time
 from django.db.models import Q
 from django.conf import settings
-from dbAPI.graph import GeoPoint
+from dbAPI.graph import GeoPoint, DijkstraNode, NodeWithOffset
+
 
 def add_route(request):
     try:
@@ -29,16 +32,16 @@ def add_route(request):
         return JsonResponse({"success": False, "reason":"unknown error"})
     
 def sampleRoute(request):
-    tolerance = 2 * 60 * 1000
+    tolerance_s = 2 * 60 * 1000
+    tolerance_m = tolerance_s * 4800 / (1000 * 60 * 60)
     data = loads(request.body)
     start_coord = GeoPoint(data["start"]["lat"], data["start"]["long"])
-    # TODO make the android equivalent of this in terms of what data sent
     based_on_route = Route.objects.get(routeName = data["route"])
-    other_paths = Path.objects.filter(related_route = based_on_route)
+    other_paths = Path.objects.filter(related_route = based_on_route).all()
     path_db = Path(account = User.objects.get(username = data["user"]), related_route = based_on_route)
     print("end time: "+str(based_on_route.end_time)+" start time "+str(data["datetime"]))
-    max_time_millis = based_on_route.end_time - data["datetime"] + tolerance
-    max_dist = max_time_millis * 4800 / (1000 * 60 * 60) 
+    max_time_millis = based_on_route.end_time - data["datetime"] + tolerance_s
+    max_dist = max_time_millis * 4800 / (1000 * 60 * 60)
     end_coord = GeoPoint(based_on_route.end_lat, based_on_route.end_long)
     print(other_paths, max_dist)
 
@@ -48,11 +51,108 @@ def sampleRoute(request):
     if ((settings.G.graph[a].position.long-end_coord.long)**2 + (settings.G.graph[a].position.lat-end_coord.lat)**2 < 
         (settings.G.graph[b].position.long-end_coord.long)**2 + (settings.G.graph[b].position.lat-end_coord.lat)**2):
         start = a
+        not_start = b
+        route_start_offset = (settings.G.graph[b].position.long-end_coord.long)**2 + (settings.G.graph[b].position.lat-end_coord.lat)**2
     else:
         start = b
+        not_start = a
+        route_start_offset = (settings.G.graph[a].position.long - end_coord.long) ** 2 + (settings.G.graph[a].position.lat - end_coord.lat) ** 2
+
+    meeting_node = None
+    meeting_path = None
 
     print(f"nodes: {start}, {end}")
     route = settings.G.dijkstra(start, (end,))
+    if route[end] < max_dist:
+        movable_paths: list[NodeWithOffset] = [] # THESE ARE START NODES !!!!
+        set_paths: list[NodeWithOffset] = []
+        for path in other_paths:
+            total_path_dist = path.start_node.dist_to_end - path.offset_from_start
+            nodes_to_add = [path.start_node]
+            while nodes_to_add[-1].child_node is not None:
+                next_node = nodes_to_add[-1].child_node
+                if next_node.waypointID is not None:
+                    set_paths += [NodeWithOffset(i.node_id, total_path_dist - i.dist_to_end) for i in nodes_to_add]
+                    nodes_to_add = [next_node]
+            movable_paths.append(NodeWithOffset(nodes_to_add[0].node_id, total_path_dist - nodes_to_add[0].dist_to_end))
+
+        path_from_end = settings.G.dijkstra(start, tuple([end]+[i.node_id for i in movable_paths]))
+        min_dist_until_meet = float('inf')
+
+        # TODO currently this just presumes that you speedwalk and don't wait in terms of future time calculations
+
+        # CHECK MOVABLE PATHS
+        paths_could_meet = [settings.G.dijkstra(i.node_id, (end,)) for i in movable_paths]
+
+        for node in route:
+            for idx, path in enumerate(paths_could_meet):
+                if node in path and node in path_from_end:
+                    dist_new_a = path_from_end[node].dist + route[node].dist - route_start_offset
+                    dist_old_a = route[end].dist - route_start_offset
+                    dist_new_b = path_from_end[node].dist + path[node].dist + movable_paths[idx].dist_from_now
+                    dist_old_b = path[end].dist + movable_paths[idx].dist_from_now
+                    distance_difference_to_node = path[node].dist + movable_paths[idx].dist_from_now - (route[node].dist - route_start_offset)
+                    if distance_difference_to_node > 0:
+                        dist_new_b += distance_difference_to_node
+                    else:
+                        dist_new_a -= distance_difference_to_node
+                    if (abs(distance_difference_to_node) < tolerance_m and route[node].dist - route_start_offset < min_dist_until_meet
+                    and dist_new_a - dist_old_a < tolerance_m and dist_new_b - dist_old_b < tolerance_m
+                    and dist_new_a < max_dist and dist_new_b < max_dist):
+                        meeting_node = node
+                        meeting_path = idx
+                        min_dist_until_meet = route[node].dist - route_start_offset
+
+        # CHECK SET PATHS
+        for node in set_paths:
+            total_path_dist = route[node.node_id].dist + path_from_end[node.node_id].dist - route_start_offset
+            dist_old = route[end].dist - route_start_offset
+            distance_difference_to_node = node.dist_from_now - route[node.node_id].dist
+            if distance_difference_to_node < tolerance_m and total_path_dist - dist_old < tolerance_m:
+                if route[node].dist - route_start_offset  < min_dist_until_meet:
+                    meeting_node = node
+                    meeting_path = None
+                    min_dist_until_meet = route[node].dist - route_start_offset
+
+        node_list = []
+        # modify main route
+        if meeting_node is not None:
+            node = meeting_node
+            before_node = [meeting_node]
+            while node != start:
+                node = route[node].parent
+                before_node.append(node)
+            node_list+=before_node
+            node = meeting_node
+            after_node = []
+            while node != end:
+                node = path_from_end[node].parent
+                after_node.append(node)
+            node_list+=before_node[::-1]
+        else:
+            node = end
+            node_list.append(node)
+            while node != start:
+                node = route[node].parent
+                node_list.append(node)
+
+        # modify other route for connecting with set path (if applicable)
+        if meeting_path is not None:
+            other_list = []
+            node = end
+            before_node = [meeting_node]
+            while node != start:
+                node = paths_could_meet[meeting_path][node].parent
+                before_node.append(node)
+            other_list+=before_node
+            after_node = []
+            while node != end:
+                node = path_from_end[node].parent
+                after_node.append(node)
+            other_list+=before_node[::-1]
+
+    # TODO convert the nodes list into geometry and save properly - ignore literally the entire rest of this function
+
     node = end
     path = [settings.G.graph[end].position]
     nodes_on_route = []
