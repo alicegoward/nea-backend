@@ -23,7 +23,7 @@ class PathNode(models.Model):
     child_node = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     path_on = models.ForeignKey('Path', on_delete=models.CASCADE)
     dist_to_end = models.FloatField()
-    waypointID = models.ForeignKey(Waypoint, on_delete=models.SET_NULL, null=True)
+    waypoint = models.ForeignKey(Waypoint, on_delete=models.SET_NULL, null=True)
     
 class Path(models.Model):
     start_node = models.ForeignKey(PathNode, on_delete=models.SET_NULL, null=True, related_name='+')
