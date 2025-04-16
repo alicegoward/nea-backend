@@ -53,7 +53,15 @@ def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meet
         while node != start:
             node = path_from_start[node].parent
             node_list.append(node)
-    node_list.append(not_start)
+    route_start = []
+    if not_start is None:
+        node = path_db.start_node
+        while node != start:
+            route_start.append(node.node_id)
+            node = node.child_node
+    else:
+        route_start.append(not_start)
+    node_list+=route_start[::-1]
 
     nodes_db = [PathNode(node_id=node_list[0], path_on=path_db, dist_to_end=0)]
     main_path_geometry = [settings.g.graph[node_list[0]].position]
@@ -138,7 +146,7 @@ def sampleRoute(request):
         # TODO currently this just presumes that you speedwalk and don't wait in terms of future time calculations
 
         # CHECK MOVABLE PATHS
-        for path, start in movable_paths:
+        for path, start in movable_paths.items():
             paths_could_meet[path] = settings.G.dijkstra(start.node_id, (end,))
 
 
@@ -169,10 +177,10 @@ def sampleRoute(request):
             dist_old = route[end].dist - route_start_offset
             distance_difference_to_node = node.dist_from_now - route[node.node_id].dist
             if distance_difference_to_node < tolerance_m and total_path_dist - dist_old < tolerance_m:
-                if route[node].dist - route_start_offset < min_dist_until_meet:
+                if route[node.node_id].dist - route_start_offset < min_dist_until_meet:
                     meeting_node = node
                     meeting_path = None
-                    min_dist_until_meet = route[node].dist - route_start_offset
+                    min_dist_until_meet = route[node.node_id].dist - route_start_offset
 
     waypoint_list = Waypoint.objects.all()
     waypoints = dict()
@@ -186,7 +194,6 @@ def sampleRoute(request):
     main_path_geometry = route_from_nodes(not_start, start, end, route, path_from_end, meeting_node, waypoints, path_db)
 
     # modify other route for connecting with set path (if applicable)
-    # todo make this work for where not start is none aka modified path is only part of full path
     if meeting_path is not None:
         route_from_nodes(None,
                          movable_paths[meeting_path].node_id,
