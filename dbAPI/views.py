@@ -7,7 +7,7 @@ from random import randint
 import time
 from django.db.models import Q
 from django.conf import settings
-from dbAPI.graph import GeoPoint, DijkstraNode, NodeWithOffset
+from dbAPI.graph import GeoPoint, NodeWithOffset
 
 
 def add_route(request):
@@ -29,7 +29,31 @@ def add_route(request):
     except Exception as e:
         print(e)
         return JsonResponse({"success": False, "reason": "unknown error"})
+    
+def get_other_geometry(path: Path):
+    other_paths = Path.objects.filter(related_route=path.related_route).exclude(id=path.id)
+    data = dict()
+    for path in other_paths:
+        previous_node = path.start_node
+        current_node = previous_node.child_node
+        next_node = current_node.child_node
+        geometry_path = [settings.G.graph[current_node.node_id].position]
+        while next_node != None:
+            geometry = list(settings.G.graph[current_node.node_id].neighbours[next_node.node_id].geometry)
+            if geometry[0] == geometry_path[-1]:
+                geometry_path += geometry
+            else:
+                geometry_path += geometry[::-1]
+            current_node = next_node
+            next_node = current_node.child_node
+        geometry_path.insert(0, GeoPoint(path.current_location.lat, path.current_location.long))
+        path_data = {}
+        for idx, point in enumerate(geometry_path):
+            path_data[idx] = {"lat": point.lat, "long": point.long}
+        data[path.account.username] = path_data
+    return data
 
+    
 
 def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meeting_node, waypoints, path_db):
     print(not_start, start, end, path_from_start, path_from_end, meeting_node, waypoints, path_db)
@@ -209,7 +233,6 @@ def sampleRoute(request):
     print("getting route from nodes")
 
     main_path_geometry = route_from_nodes(not_start, start, end, route, path_from_end, meeting_node, waypoints, path_db)
-
     print("made geometry")
 
     # modify other route for connecting with set path (if applicable)
@@ -227,7 +250,8 @@ def sampleRoute(request):
     data = {}
     for idx, point in enumerate(main_path_geometry):
         data[idx] = {"lat": point.lat, "long": point.long}
-    return JsonResponse({"geometry": data, "dist": 0})
+    other_geometry = get_other_geometry(path_db)
+    return JsonResponse({"geometry": data, "dist": 0, "other_paths":other_geometry})
 
 
 def getRoutes(_, user):
@@ -253,7 +277,7 @@ def location_update(request):
     data = loads(request.body)
     path = Path.objects.select_related('current_location').filter(account__username=data["user"]).first()
     if path is None:
-        return JsonResponse({"geometry": {}, "dist": 0})
+        return JsonResponse({"geometry": {}, "dist": 0, "other_paths": {}})
     if path.current_location is not None:
         path.current_location.datetime = data["datetime"]
         path.current_location.lat = data["lat"]
@@ -263,7 +287,7 @@ def location_update(request):
         path.current_location = Location_data(datetime=data["datetime"], lat=data["lat"], long=data["long"])
         path.current_location.save()
 
-    if path.start_node is None: return JsonResponse({"geometry": {}, "dist": 0})
+    if path.start_node is None: return JsonResponse({"geometry": {}, "dist": 0, "other_paths": {}})
     previous_node = path.start_node
     current_node = previous_node.child_node
     geometry_path = [settings.G.graph[current_node.node_id].position]
@@ -308,7 +332,7 @@ def location_update(request):
     data = {}
     for idx, point in enumerate(geometry_path):
         data[idx] = {"lat": point.lat, "long": point.long}
-    return JsonResponse({"geometry": data, "dist": path.start_node.dist_to_end - path.offset_from_start})
+    return JsonResponse({"geometry": data, "dist": path.start_node.dist_to_end - path.offset_from_start, "other_paths": get_other_geometry(path)})
 
 
 def user_info(request):
