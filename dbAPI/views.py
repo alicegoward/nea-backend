@@ -1,7 +1,6 @@
 from json import loads
 from django.forms.models import model_to_dict
 from django.http import JsonResponse
-from networkx.algorithms.shortest_paths.weighted import dijkstra_path
 
 from .models import Location_data, User, Notification, Route, Path, PathNode, Waypoint
 from random import randint
@@ -33,6 +32,12 @@ def add_route(request):
 
 
 def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meeting_node, waypoints, path_db):
+    print(not_start, start, end, path_from_start, path_from_end, meeting_node, waypoints, path_db)
+    print(start, meeting_node, end)
+    print("path from end:")
+    [print(f"{i[0]}: f{i[1]}") for i in path_from_end.items()]
+    print("path from start")
+    [print(f"{i[0]}: f{i[1]}") for i in path_from_start.items()]
     node_list = []
     if meeting_node is not None:
         node = meeting_node
@@ -46,6 +51,7 @@ def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meet
         while node != start:
             node = path_from_start[node].parent
             before_node.append(node)
+            print("before node")
         node_list += before_node
     else:
         node = end
@@ -56,7 +62,8 @@ def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meet
     route_start = []
     if not_start is None:
         node = path_db.start_node
-        while node != start:
+        while node.node_id != start:
+            print(node)
             route_start.append(node.node_id)
             node = node.child_node
     else:
@@ -64,13 +71,12 @@ def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meet
     node_list+=route_start[::-1]
 
     nodes_db = [PathNode(node_id=node_list[0], path_on=path_db, dist_to_end=0)]
-    main_path_geometry = [settings.g.graph[node_list[0]].position]
-    for node in node_list:
+    main_path_geometry = [settings.G.graph[node_list[0]].position]
+    for node in node_list[1:]:
         prev_node = nodes_db[-1]
         nodes_db.append(PathNode(node_id=node,
                                  path_on=path_db,
-                                 dist_to_end=prev_node.dist_to_end + settings.G.graph[prev_node.node_id].neighbours[
-                                     node].length))
+                                 dist_to_end=prev_node.dist_to_end + settings.G.graph[prev_node.node_id].neighbours[node].length))
         if node in waypoints: nodes_db[-1].waypoint = waypoints[node]
         path_section = list(settings.G.graph[prev_node.node_id].neighbours[node].geometry)
         if path_section[0] == main_path_geometry[-1]:
@@ -127,27 +133,32 @@ def sampleRoute(request):
     movable_paths: dict[Path, NodeWithOffset] = dict()  # THESE ARE START NODES !!!!
 
     print(f"nodes: {start}, {end}")
+    print("starting to make route")
     route = settings.G.dijkstra(start, (end,))
-    if route[end] < max_dist:
+    print("found dijkstra")
+    if route[end].dist < max_dist:
+        print("in if statement")
+        print(other_paths)
         set_paths: list[NodeWithOffset] = []
         for path in other_paths:
             total_path_dist = path.start_node.dist_to_end - path.offset_from_start
             nodes_to_add = [path.start_node]
             while nodes_to_add[-1].child_node is not None:
                 next_node = nodes_to_add[-1].child_node
-                if next_node.waypointID is not None:
+                if next_node.waypoint is not None:
                     set_paths += [NodeWithOffset(i.node_id, total_path_dist - i.dist_to_end) for i in nodes_to_add]
-                    nodes_to_add = [next_node]
+                    nodes_to_add = []
+                nodes_to_add.append(next_node)
             movable_paths[path] = NodeWithOffset(nodes_to_add[0].node_id, total_path_dist - nodes_to_add[0].dist_to_end)
 
-        path_from_end = settings.G.dijkstra(start, tuple([end] + [i.node_id for i in movable_paths.values()]))
+        path_from_end = settings.G.dijkstra(end, tuple([start] + [i.node_id for i in movable_paths.values()]))
         min_dist_until_meet = float('inf')
-
+        print("found movable / set paths")
         # TODO currently this just presumes that you speedwalk and don't wait in terms of future time calculations
 
         # CHECK MOVABLE PATHS
-        for path, start in movable_paths.items():
-            paths_could_meet[path] = settings.G.dijkstra(start.node_id, (end,))
+        for path, path_start in movable_paths.items():
+            paths_could_meet[path] = settings.G.dijkstra(path_start.node_id, (end,))
 
 
         for node in route:
@@ -170,6 +181,7 @@ def sampleRoute(request):
                         meeting_node = node
                         meeting_path = path
                         min_dist_until_meet = route[node].dist - route_start_offset
+        print("checked movable paths")
 
         # CHECK SET PATHS
         for node in set_paths:
@@ -181,6 +193,9 @@ def sampleRoute(request):
                     meeting_node = node
                     meeting_path = None
                     min_dist_until_meet = route[node.node_id].dist - route_start_offset
+        print("checked set paths")
+    
+    print("found applicable meeting points")
 
     waypoint_list = Waypoint.objects.all()
     waypoints = dict()
@@ -191,7 +206,11 @@ def sampleRoute(request):
         new_waypoint.save()
         waypoints[meeting_node] = new_waypoint
 
+    print("getting route from nodes")
+
     main_path_geometry = route_from_nodes(not_start, start, end, route, path_from_end, meeting_node, waypoints, path_db)
+
+    print("made geometry")
 
     # modify other route for connecting with set path (if applicable)
     if meeting_path is not None:
@@ -232,10 +251,9 @@ def getRoutes(_, user):
 
 def location_update(request):
     data = loads(request.body)
-    print("aaaa", data)
     path = Path.objects.select_related('current_location').filter(account__username=data["user"]).first()
     if path is None:
-        return JsonResponse({})
+        return JsonResponse({"geometry": {}, "dist": 0})
     if path.current_location is not None:
         path.current_location.datetime = data["datetime"]
         path.current_location.lat = data["lat"]
@@ -245,7 +263,7 @@ def location_update(request):
         path.current_location = Location_data(datetime=data["datetime"], lat=data["lat"], long=data["long"])
         path.current_location.save()
 
-    print(path.start_node)
+    if path.start_node is None: return JsonResponse({"geometry": {}, "dist": 0})
     previous_node = path.start_node
     current_node = previous_node.child_node
     geometry_path = [settings.G.graph[current_node.node_id].position]
@@ -310,7 +328,6 @@ def add_user(request):
         data = loads(request.body)
         if User.objects.filter(username=data["username"]).count() > 0:
             raise Exception
-        print("aaaa", data)
         User(username=data["username"], password=data["password"]).save()
         return JsonResponse({"success": True})
     except:

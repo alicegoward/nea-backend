@@ -30,6 +30,9 @@ class DijkstraNode:
     def __init__(self, distance: float, parent) -> None:
         self.parent = parent
         self.dist = distance
+    
+    def __str__(self) -> str:
+        return (f"parent {self.parent}, distance {self.dist}")
 
 class Graph:
     def __init__(self) -> None:
