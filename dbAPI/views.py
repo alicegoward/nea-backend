@@ -53,7 +53,22 @@ def get_other_geometry(path: Path):
         data[path.account.username] = path_data
     return data
 
-    
+def fix_waypoints(waypoints):
+    for waypoint in waypoints.values():
+        nodes_at_waypoint = PathNode.objects.filter(waypoint = waypoint).all()
+        max_dist_to_end = max(nodes_at_waypoint, key = lambda k: k.dist_to_end).dist_to_end
+        for node in nodes_at_waypoint:
+            node.dist_waiting_at_node = max_dist_to_end - node.dist_to_end
+            node.save()
+
+def get_total_dist(path: Path):
+    return path.start_node.dist_to_end - path.offset_from_start + sum(i.dist_waiting_at_node for i in PathNode.objects.filter(path_on = path).all())
+
+def latlong(nodes):
+    data = {}
+    for idx, point in enumerate(nodes):
+        data[idx] = {"lat": point.lat, "long": point.long}
+    return data
 
 def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meeting_node, waypoints, path_db):
     print(not_start, start, end, path_from_start, path_from_end, meeting_node, waypoints, path_db)
@@ -149,7 +164,7 @@ def sampleRoute(request):
         not_start = a
         route_start_offset = (settings.G.graph[a].position.long - end_coord.long) ** 2 + (
                     settings.G.graph[a].position.lat - end_coord.lat) ** 2
-
+    path_db.offset_from_start = route_start_offset
     meeting_node = None
     meeting_path = None
     path_from_end = dict()
@@ -167,18 +182,19 @@ def sampleRoute(request):
         for path in other_paths:
             total_path_dist = path.start_node.dist_to_end - path.offset_from_start
             nodes_to_add = [path.start_node]
+            waiting_offset = 0
             while nodes_to_add[-1].child_node is not None:
                 next_node = nodes_to_add[-1].child_node
                 if next_node.waypoint is not None:
-                    set_paths += [NodeWithOffset(i.node_id, total_path_dist - i.dist_to_end) for i in nodes_to_add]
+                    set_paths += [NodeWithOffset(i.node_id, total_path_dist - i.dist_to_end + waiting_offset) for i in nodes_to_add]
+                    waiting_offset += next_node.dist_waiting_at_node
                     nodes_to_add = []
                 nodes_to_add.append(next_node)
-            movable_paths[path] = NodeWithOffset(nodes_to_add[0].node_id, total_path_dist - nodes_to_add[0].dist_to_end)
+            movable_paths[path] = NodeWithOffset(nodes_to_add[0].node_id, total_path_dist - nodes_to_add[0].dist_to_end + waiting_offset)
 
         path_from_end = settings.G.dijkstra(end, tuple([start] + [i.node_id for i in movable_paths.values()]))
         min_dist_until_meet = float('inf')
         print("found movable / set paths")
-        # TODO currently this just presumes that you speedwalk and don't wait in terms of future time calculations
 
         # CHECK MOVABLE PATHS
         for path, path_start in movable_paths.items():
@@ -225,11 +241,11 @@ def sampleRoute(request):
     waypoints = dict()
     for i in waypoint_list:
         waypoints[PathNode.objects.filter(waypoint=i).all()[0].node_id] = i
-    if meeting_node is not None:
-        new_waypoint = Waypoint()
-        new_waypoint.save()
-        waypoints[meeting_node] = new_waypoint
-
+    if meeting_node is not None and meeting_node not in waypoints:
+            new_waypoint = Waypoint()
+            new_waypoint.save()
+            waypoints[meeting_node] = new_waypoint
+            
     print("getting route from nodes")
 
     main_path_geometry = route_from_nodes(not_start, start, end, route, path_from_end, meeting_node, waypoints, path_db)
@@ -245,13 +261,16 @@ def sampleRoute(request):
                          meeting_node,
                          waypoints,
                          meeting_path)
-
+    
+    fix_waypoints(waypoints)
 
     data = {}
     for idx, point in enumerate(main_path_geometry):
         data[idx] = {"lat": point.lat, "long": point.long}
-    other_geometry = get_other_geometry(path_db)
-    return JsonResponse({"geometry": data, "dist": 0, "other_paths":other_geometry})
+    return JsonResponse({"geometry": data, 
+                         "dist": get_total_dist(path_db), 
+                         "other_paths":get_other_geometry(path_db), 
+                         "waypoints": latlong([settings.G.graph[i].position for i in waypoints.keys()])})
 
 
 def getRoutes(_, user):
@@ -329,10 +348,11 @@ def location_update(request):
                               (path.current_location.long - settings.G.graph[
                                   path.start_node.node_id].position.long) ** 2) ** (1 / 2)
     path.save()
-    data = {}
-    for idx, point in enumerate(geometry_path):
-        data[idx] = {"lat": point.lat, "long": point.long}
-    return JsonResponse({"geometry": data, "dist": path.start_node.dist_to_end - path.offset_from_start, "other_paths": get_other_geometry(path)})
+    waypoint_nodes = [PathNode.objects.filter(waypoint = i).all()[0].node_id for i in Waypoint.objects.all()]
+    return JsonResponse({"geometry": latlong(geometry_path), 
+                         "dist": get_total_dist(path), 
+                         "other_paths": get_other_geometry(path), 
+                         "waypoints": latlong([settings.G.graph[i].position for i in waypoint_nodes])})
 
 
 def user_info(request):
