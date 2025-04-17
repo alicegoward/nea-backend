@@ -1,4 +1,5 @@
 from django.db import models
+from datetime import datetime
 
 class Location_data(models.Model):
     lat = models.FloatField()
@@ -34,6 +35,7 @@ class Path(models.Model):
     on_path = models.BooleanField(default=True)
     offset_from_start = models.FloatField(null=True)
     related_route = models.ForeignKey('Route', on_delete=models.CASCADE, related_name='+', null=True)
+    eta = models.DateTimeField(default=datetime.now())
     
 class Route(models.Model):
     routeName = models.CharField(max_length=200)

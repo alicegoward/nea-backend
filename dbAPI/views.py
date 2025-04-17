@@ -7,6 +7,8 @@ from random import randint
 import time
 from django.db.models import Q
 from django.conf import settings
+from datetime import timedelta
+from django.utils.timezone import now
 from dbAPI.graph import GeoPoint, NodeWithOffset
 
 
@@ -130,6 +132,8 @@ def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meet
     for i in nodes_db: i.save()
     path_db.start_node = nodes_db[-1]
     path_db.end_node = nodes_db[0]
+    path_db.save()
+    path_db.eta = now() + timedelta(seconds = get_total_dist(path_db) / 1.34)
     path_db.save()
     return main_path_geometry
 
@@ -328,13 +332,13 @@ def location_update(request):
                                                                                path.current_location.long))
             if next_node is None: break
         if closest_lines_to_node[previous_node.node_id] > 0.001:
-            print("gone off course" + str(closest_lines_to_node[previous_node.node_id]))
+            print("gone off course distance" + str(closest_lines_to_node[previous_node.node_id]))
             if path.on_path:
                 Notification(notification="gone off course " + str(randint(0, 1000)), user=data["user"],
                              datetime=int(time.time())).save()
                 path.on_path = False
 
-        while next_node != None:
+        while next_node is not None:
             geometry = list(settings.G.graph[current_node.node_id].neighbours[next_node.node_id].geometry)
             if geometry[0] == geometry_path[-1]:
                 geometry_path += geometry
@@ -347,7 +351,15 @@ def location_update(request):
         path.start_node.node_id].position.lat) ** 2 +
                               (path.current_location.long - settings.G.graph[
                                   path.start_node.node_id].position.long) ** 2) ** (1 / 2)
+    if abs((now() - path.eta + timedelta(seconds=get_total_dist(path) / 1.34)).total_seconds()) > 60:
+        print("gone off course time" + str(abs((path.eta - now() + timedelta(seconds=get_total_dist(path) / 1.34)).total_seconds())))
+        if path.on_path:
+            Notification(notification="gone off course " + str(randint(0, 1000)), user=data["user"],
+                            datetime=int(time.time())).save()
+            path.on_path = False
+
     path.save()
+
     waypoint_nodes = [PathNode.objects.filter(waypoint = i).all()[0].node_id for i in Waypoint.objects.all()]
     return JsonResponse({"geometry": latlong(geometry_path), 
                          "dist": get_total_dist(path), 
