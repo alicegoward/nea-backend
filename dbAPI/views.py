@@ -137,15 +137,13 @@ def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meet
     path_db.save()
     return main_path_geometry
 
-
-def sampleRoute(request):
+def activate_route(data, path_db = None):
     tolerance_s = 2 * 60 * 1000
     tolerance_m = tolerance_s * 4800 / (1000 * 60 * 60)
-    data = loads(request.body)
-    start_coord = GeoPoint(data["start"]["lat"], data["start"]["long"])
+    start_coord = GeoPoint(data["position"]["lat"], data["position"]["long"])
     based_on_route = Route.objects.get(routeName=data["route"])
-    other_paths = Path.objects.filter(related_route=based_on_route).all()
-    path_db = Path(account=User.objects.get(username=data["user"]), related_route=based_on_route)
+    other_paths = Path.objects.filter(related_route=based_on_route).exclude(account = User.objects.get(username=data["user"])).all()
+    if path_db is None: path_db = Path(account=User.objects.get(username=data["user"]), related_route=based_on_route)
     print("end time: " + str(based_on_route.end_time) + " start time " + str(data["datetime"]))
     max_time_millis = based_on_route.end_time - data["datetime"] + tolerance_s
     max_dist = max_time_millis * 4800 / (1000 * 60 * 60)
@@ -252,6 +250,9 @@ def sampleRoute(request):
             
     print("getting route from nodes")
 
+    path_db.current_location = Location_data(datetime=data["datetime"], lat=data["position"]["lat"], long=data["position"]["long"])
+    path_db.current_location.save()
+
     main_path_geometry = route_from_nodes(not_start, start, end, route, path_from_end, meeting_node, waypoints, path_db)
     print("made geometry")
 
@@ -277,6 +278,11 @@ def sampleRoute(request):
                          "waypoints": latlong([settings.G.graph[i].position for i in waypoints.keys()])})
 
 
+
+
+def sampleRoute(request):
+    return activate_route(loads(request.body))
+
 def getRoutes(_, user):
     routes = Route.objects.filter(Q(user=user) | Q(participants=user))
     print(routes)
@@ -301,14 +307,12 @@ def location_update(request):
     path = Path.objects.select_related('current_location').filter(account__username=data["user"]).first()
     if path is None:
         return JsonResponse({"geometry": {}, "dist": 0, "other_paths": {}})
-    if path.current_location is not None:
-        path.current_location.datetime = data["datetime"]
-        path.current_location.lat = data["lat"]
-        path.current_location.long = data["long"]
-        path.current_location.save()
-    else:
-        path.current_location = Location_data(datetime=data["datetime"], lat=data["lat"], long=data["long"])
-        path.current_location.save()
+    path.current_location.datetime = data["datetime"]
+    path.current_location.lat = data["position"]["lat"]
+    path.current_location.long = data["position"]["long"]
+    path.current_location.save()
+
+    data["route"] = path.related_route.routeName
 
     if path.start_node is None: return JsonResponse({"geometry": {}, "dist": 0, "other_paths": {}})
     previous_node = path.start_node
@@ -333,10 +337,8 @@ def location_update(request):
             if next_node is None: break
         if closest_lines_to_node[previous_node.node_id] > 0.001:
             print("gone off course distance" + str(closest_lines_to_node[previous_node.node_id]))
-            if path.on_path:
-                Notification(notification="gone off course " + str(randint(0, 1000)), user=data["user"],
-                             datetime=int(time.time())).save()
-                path.on_path = False
+            Notification(notification="gone off course " + str(randint(0, 1000)), user=data["user"], datetime=int(time.time())).save()
+            return activate_route(data, path)
 
         while next_node is not None:
             geometry = list(settings.G.graph[current_node.node_id].neighbours[next_node.node_id].geometry)
@@ -353,10 +355,8 @@ def location_update(request):
                                   path.start_node.node_id].position.long) ** 2) ** (1 / 2)
     if abs((now() - path.eta + timedelta(seconds=get_total_dist(path) / 1.34)).total_seconds()) > 60:
         print("gone off course time" + str(abs((path.eta - now() + timedelta(seconds=get_total_dist(path) / 1.34)).total_seconds())))
-        if path.on_path:
-            Notification(notification="gone off course " + str(randint(0, 1000)), user=data["user"],
-                            datetime=int(time.time())).save()
-            path.on_path = False
+        Notification(notification="gone off course " + str(randint(0, 1000)), user=data["user"], datetime=int(time.time())).save()
+        return activate_route(data, path)
 
     path.save()
 
