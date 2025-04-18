@@ -59,8 +59,14 @@ def fix_waypoints(waypoints):
     for waypoint in waypoints.values():
         nodes_at_waypoint = PathNode.objects.filter(waypoint = waypoint).all()
         if len(nodes_at_waypoint) < 2:
-            for i in nodes_at_waypoint:
-                i.waypoint = None
+            for node in nodes_at_waypoint:
+                node.waypoint = None
+                node.save()
+                Notification(
+                    user=node.path_on.account,
+                    notification=f"The meeting at {settings.G.graph[node.node_id].position} has been cancelled.",
+                    datetime=int(time.time())
+                ).save()
             waypoint.delete()
         else:
             max_dist_to_end = max(nodes_at_waypoint, key = lambda k: k.dist_to_end).dist_to_end
@@ -150,15 +156,13 @@ def cleanup_path(path_db: Path):
     for i in all_waypoints:
         node = PathNode.objects.filter(waypoint=i).all().first()
         if node is not None: waypoints[node] = i
-    path_db.start_node = None
-    path_db.end_node = None
+    path_db.start_node.delete()
     path_db.save()
-    PathNode.objects.filter(path_on=path_db).delete()    
     fix_waypoints(waypoints)
 
 def activate_route(data, path_db = None):
-    tolerance_s = 2 * 60 * 1000
-    tolerance_m = tolerance_s * 4800 / (1000 * 60 * 60)
+    tolerance_s = 5 * 60
+    tolerance_m = tolerance_s * 4800 / (60 * 60)
     start_coord = GeoPoint(data["position"]["lat"], data["position"]["long"])
     based_on_route = Route.objects.get(routeName=data["route"])
     other_paths = Path.objects.filter(related_route=based_on_route).exclude(account = User.objects.get(username=data["user"])).all()
@@ -191,7 +195,9 @@ def activate_route(data, path_db = None):
     meeting_path = None
     path_from_end = dict()
     paths_could_meet = dict()
+    set_paths: dict[Path, list[NodeWithOffset]] = dict()  # THESE ARE ALL NODES !!!!
     movable_paths: dict[Path, NodeWithOffset] = dict()  # THESE ARE START NODES !!!!
+    move_other_path = True
 
     print(f"nodes: {start}, {end}")
     print("starting to make route")
@@ -200,7 +206,6 @@ def activate_route(data, path_db = None):
     if route[end].dist < max_dist:
         print("in if statement")
         print(other_paths)
-        set_paths: list[NodeWithOffset] = []
         for path in other_paths:
             total_path_dist = path.start_node.dist_to_end - path.offset_from_start
             nodes_to_add = [path.start_node]
@@ -208,7 +213,7 @@ def activate_route(data, path_db = None):
             while nodes_to_add[-1].child_node is not None:
                 next_node = nodes_to_add[-1].child_node
                 if next_node.waypoint is not None:
-                    set_paths += [NodeWithOffset(i.node_id, total_path_dist - i.dist_to_end + waiting_offset) for i in nodes_to_add]
+                    set_paths[nodes_to_add[0]] = [NodeWithOffset(i.node_id, total_path_dist - i.dist_to_end + waiting_offset) for i in nodes_to_add]
                     waiting_offset += next_node.dist_waiting_at_node
                     nodes_to_add = []
                 nodes_to_add.append(next_node)
@@ -246,15 +251,17 @@ def activate_route(data, path_db = None):
         print("checked movable paths")
 
         # CHECK SET PATHS
-        for node in set_paths:
-            total_path_dist = route[node.node_id].dist + path_from_end[node.node_id].dist - route_start_offset
-            dist_old = route[end].dist - route_start_offset
-            distance_difference_to_node = node.dist_from_now - route[node.node_id].dist
-            if distance_difference_to_node < tolerance_m and total_path_dist - dist_old < tolerance_m:
-                if route[node.node_id].dist - route_start_offset < min_dist_until_meet:
-                    meeting_node = node
-                    meeting_path = None
-                    min_dist_until_meet = route[node.node_id].dist - route_start_offset
+        for path, node_list in set_paths.items():
+            for node in node_list:
+                total_path_dist = route[node.node_id].dist + path_from_end[node.node_id].dist - route_start_offset
+                dist_old = route[end].dist - route_start_offset
+                distance_difference_to_node = node.dist_from_now - route[node.node_id].dist
+                if distance_difference_to_node < tolerance_m and total_path_dist - dist_old < tolerance_m:
+                    if route[node.node_id].dist - route_start_offset < min_dist_until_meet:
+                        meeting_node = node.node_id
+                        meeting_path = path
+                        move_other_path = False
+                        min_dist_until_meet = route[node.node_id].dist - route_start_offset
         print("checked set paths")
     
     print("found applicable meeting points")
@@ -264,31 +271,37 @@ def activate_route(data, path_db = None):
     for i in waypoint_list:
         node = PathNode.objects.filter(waypoint=i).all().first()
         if node is not None: waypoints[node.node_id] = i
-    if meeting_node is not None and meeting_node not in waypoints:
+    if meeting_node is not None:
+        if meeting_node not in waypoints.values():
             new_waypoint = Waypoint()
             new_waypoint.save()
             waypoints[meeting_node] = new_waypoint
+        else:
+            new_waypoint = waypoints[meeting_node]
             
     print("getting route from nodes")
 
     path_db.current_location = Location_data(datetime=data["datetime"], lat=data["position"]["lat"], long=data["position"]["long"])
     path_db.current_location.save()
 
-    main_path_geometry = route_from_nodes(not_start, start, end, route, path_from_end, meeting_node, waypoints, path_db)
-    print("made geometry")
-
     # modify other route for connecting with set path (if applicable)
-    if meeting_path is not None:
-        route_from_nodes(None,
-                         movable_paths[meeting_path].node_id,
-                         end,
-                         paths_could_meet[meeting_path],
-                         path_from_end,
-                         meeting_node,
-                         waypoints,
-                         meeting_path)
-    
-    fix_waypoints(waypoints)
+    if meeting_node is not None:
+        main_path_geometry = route_from_nodes(not_start, start, end, route, path_from_end, meeting_node, waypoints, path_db)
+        if move_other_path:
+            route_from_nodes(None, movable_paths[meeting_path].node_id, end, paths_could_meet[meeting_path], path_from_end, meeting_node, waypoints, meeting_path)
+        meeting_other_node = PathNode.objects.get(Q(path_on = meeting_path) & Q(node_id = meeting_node))
+        meeting_other_node.waypoint = new_waypoint
+        meeting_other_node.save()
+        fix_waypoints(waypoints)
+        for i in PathNode.objects.filter(waypoint = new_waypoint):
+            Notification(
+                user = i.path_on.account.username,
+                notification = "new meeting place",
+                datetime = int(time.time())
+            ).save()
+    else:
+        main_path_geometry = route_from_nodes(not_start, start, end, route, path_from_end, None, waypoints, path_db)
+
 
     data = {}
     for idx, point in enumerate(main_path_geometry):
@@ -358,7 +371,7 @@ def location_update(request):
             if next_node is None: break
         if closest_lines_to_node[previous_node.node_id] > 0.001:
             print("gone off course distance" + str(closest_lines_to_node[previous_node.node_id]))
-            Notification(notification="gone off course " + str(randint(0, 1000)), user=data["user"], datetime=int(time.time())).save()
+            Notification(notification="gone off course (distance)", user=data["user"], datetime=int(time.time())).save()
             return activate_route(data, path)
 
         while next_node is not None:
@@ -376,13 +389,13 @@ def location_update(request):
                                   path.start_node.node_id].position.long) ** 2) ** (1 / 2)
     if abs((now() - path.eta + timedelta(seconds=get_total_dist(path) / 1.34)).total_seconds()) > 60:
         print("gone off course time" + str(abs((path.eta - now() + timedelta(seconds=get_total_dist(path) / 1.34)).total_seconds())))
-        Notification(notification="gone off course " + str(randint(0, 1000)), user=data["user"], datetime=int(time.time())).save()
+        Notification(notification="gone off course (time)", user=data["user"], datetime=int(time.time())).save()
         return activate_route(data, path)
 
     path.save()
 
 
-    waypoint_nodes = [PathNode.objects.filter(Q(path_on = path) | Q(waypoint = i)).all().first() for i in Waypoint.objects.all()]
+    waypoint_nodes = [PathNode.objects.filter(waypoint = i).all().first() for i in Waypoint.objects.all()]
     return JsonResponse({"geometry": latlong(geometry_path), 
                          "dist": get_total_dist(path), 
                          "other_paths": get_other_geometry(path), 
@@ -412,18 +425,13 @@ def add_user(request):
         return JsonResponse({"success": False, "reason": "user already taken"})
 
 
-def create_notification(_, user):
-    try:
-        Notification(notification="some sample text " + str(randint(0, 1000)), user=user,
-                     datetime=int(time.time())).save()
-        return JsonResponse({"success": True})
-    except Exception as e:
-        print(e)
-        return JsonResponse({"success": False})
-
-
 def deactivate(_, user):
     Path.objects.filter(account=User.objects.get(username=user)).delete()
+    waypoints = dict()
+    for i in Waypoint.objects.all():
+        node = PathNode.objects.filter(waypoint=i).all().first()
+        if node is not None: waypoints[node.node_id] = i
+    fix_waypoints(waypoints)
     return JsonResponse({'success': True})
 
 
@@ -462,7 +470,7 @@ def add_friend(request):
         requested = User.objects.get(username=data["userRequested"])
         requested.pending_friends.add(requesting)
         Notification(
-            user=requested,
+            user=requested.username,
             notification=f"{requesting} has requested to add you as a friend.",
             datetime=int(time.time())
         ).save()
@@ -479,4 +487,9 @@ def update_friend_state(request):
     accepting.pending_friends.remove(accepted)
     if data["result"] == "accepted":
         accepting.friends.add(accepted)
+        Notification(
+            user=accepted.username,
+            notification=f"{accepting} has accepted your friend request.",
+            datetime=int(time.time())
+        ).save()
     accepting.save()
