@@ -3,3 +3,4 @@ mysite/__pycache__
 dbAPI/__pycache__
 dbAPI/migrations
 cache/
+.vscode

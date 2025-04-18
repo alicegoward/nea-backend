@@ -10,8 +10,8 @@ urlpatterns = [
     path("route/deactivate/<str:user>", views.deactivate, name="deactivate"),
     path("route/sample", views.sampleRoute, name = "sample_route"),
 
-    path("user/login", views.user_info, name="user"),
-    path("user/add", views.add_user, name="user"),
+    path("user/login", views.user_info, name="user_login"),
+    path("user/add", views.add_user, name="user_add"),
     path("user/update_friend_state", views.update_friend_state, name="update_friend_state"),
     path("user/add_friend", views.add_friend, name="add_friend"),
     path("user/friends/<str:user>", views.get_friends, name="get_friends"),

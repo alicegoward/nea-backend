@@ -58,10 +58,15 @@ def get_other_geometry(path: Path):
 def fix_waypoints(waypoints):
     for waypoint in waypoints.values():
         nodes_at_waypoint = PathNode.objects.filter(waypoint = waypoint).all()
-        max_dist_to_end = max(nodes_at_waypoint, key = lambda k: k.dist_to_end).dist_to_end
-        for node in nodes_at_waypoint:
-            node.dist_waiting_at_node = max_dist_to_end - node.dist_to_end
-            node.save()
+        if len(nodes_at_waypoint) < 2:
+            for i in nodes_at_waypoint:
+                i.waypoint = None
+            waypoint.delete()
+        else:
+            max_dist_to_end = max(nodes_at_waypoint, key = lambda k: k.dist_to_end).dist_to_end
+            for node in nodes_at_waypoint:
+                node.dist_waiting_at_node = max_dist_to_end - node.dist_to_end
+                node.save()
 
 def get_total_dist(path: Path):
     return path.start_node.dist_to_end - path.offset_from_start + sum(i.dist_waiting_at_node for i in PathNode.objects.filter(path_on = path).all())
@@ -124,8 +129,10 @@ def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meet
             main_path_geometry += path_section
         else:
             main_path_geometry += path_section[::-1]
-    path_db.save()
+    try: path_db.save()
+    except: pass
     for i in nodes_db: i.save()
+    path_db.save()
     for i in range(len(nodes_db) - 1):
         nodes_db[i].parent_node = nodes_db[i + 1]
         nodes_db[i + 1].child_node = nodes_db[i]
@@ -137,6 +144,18 @@ def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meet
     path_db.save()
     return main_path_geometry
 
+def cleanup_path(path_db: Path):
+    all_waypoints = Waypoint.objects.all()
+    waypoints = dict()
+    for i in all_waypoints:
+        node = PathNode.objects.filter(waypoint=i).all().first()
+        if node is not None: waypoints[node] = i
+    path_db.start_node = None
+    path_db.end_node = None
+    path_db.save()
+    PathNode.objects.filter(path_on=path_db).delete()    
+    fix_waypoints(waypoints)
+
 def activate_route(data, path_db = None):
     tolerance_s = 2 * 60 * 1000
     tolerance_m = tolerance_s * 4800 / (1000 * 60 * 60)
@@ -144,6 +163,7 @@ def activate_route(data, path_db = None):
     based_on_route = Route.objects.get(routeName=data["route"])
     other_paths = Path.objects.filter(related_route=based_on_route).exclude(account = User.objects.get(username=data["user"])).all()
     if path_db is None: path_db = Path(account=User.objects.get(username=data["user"]), related_route=based_on_route)
+    else: cleanup_path(path_db)
     print("end time: " + str(based_on_route.end_time) + " start time " + str(data["datetime"]))
     max_time_millis = based_on_route.end_time - data["datetime"] + tolerance_s
     max_dist = max_time_millis * 4800 / (1000 * 60 * 60)
@@ -242,7 +262,8 @@ def activate_route(data, path_db = None):
     waypoint_list = Waypoint.objects.all()
     waypoints = dict()
     for i in waypoint_list:
-        waypoints[PathNode.objects.filter(waypoint=i).all()[0].node_id] = i
+        node = PathNode.objects.filter(waypoint=i).all().first()
+        if node is not None: waypoints[node.node_id] = i
     if meeting_node is not None and meeting_node not in waypoints:
             new_waypoint = Waypoint()
             new_waypoint.save()
@@ -360,11 +381,12 @@ def location_update(request):
 
     path.save()
 
-    waypoint_nodes = [PathNode.objects.filter(waypoint = i).all()[0].node_id for i in Waypoint.objects.all()]
+
+    waypoint_nodes = [PathNode.objects.filter(Q(path_on = path) | Q(waypoint = i)).all().first() for i in Waypoint.objects.all()]
     return JsonResponse({"geometry": latlong(geometry_path), 
                          "dist": get_total_dist(path), 
                          "other_paths": get_other_geometry(path), 
-                         "waypoints": latlong([settings.G.graph[i].position for i in waypoint_nodes])})
+                         "waypoints": latlong([settings.G.graph[i.node_id].position for i in waypoint_nodes if i is not None])})
 
 
 def user_info(request):
@@ -410,7 +432,7 @@ def show_notification(_, user):
     data = {}
     for i in notifications:
         data[i.datetime] = i.notification
-    Notification.objects.all().delete()
+    Notification.objects.filter(user=user).all().delete()
     return JsonResponse({"success": True, "notifications": data})
 
 
