@@ -14,9 +14,10 @@ class NodeWithOffset:
 
 
 class Edge:
-    def __init__(self, length: float, geometry: tuple[GeoPoint, ...]):
+    def __init__(self, length: float, geometry: tuple[GeoPoint, ...], name: str):
         self.length = length
         self.geometry = geometry
+        self.name = name
 
 class Node:
     def __init__(self, position: GeoPoint) -> None:
@@ -63,11 +64,11 @@ class Graph:
                 return visited
         return {}
     
-    def closest_from_lat_long(self, point: GeoPoint) -> int:
+    def closest_from_lat_long(self, point: GeoPoint, exclude = {}) -> int:
         min_dist, node_id = math.inf, 0
         for id, node in self.graph.items():
             dist = (point.long-node.position.long)**2 + (point.lat-node.position.lat)**2
-            if dist < min_dist:
+            if dist < min_dist and id not in exclude:
                 min_dist = dist
                 node_id = id
         return node_id

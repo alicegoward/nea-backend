@@ -13,24 +13,32 @@ from dbAPI.graph import GeoPoint, NodeWithOffset
 
 
 def add_route(request):
-    try:
-        data = loads(request.body)
-        print("some route data", data)
-        route = Route(
-            user=data["username"],
-            end_lat=data["lat"],
-            end_long=data["long"],
-            end_time=data["endTime"],
-            routeName=data["name"]
-        )
-        route.save()
-        print(route)
-        for i in data["friends"].values():
-            route.participants.add(User.objects.get(username=i))
-        return JsonResponse({"success": True})
-    except Exception as e:
-        print(e)
-        return JsonResponse({"success": False, "reason": "unknown error"})
+    data = loads(request.body)
+    print("testing here",data)
+    checked = set()
+    print("this is the end node")
+    junction_name = ""
+    while junction_name == "":
+        end_node = settings.G.closest_from_lat_long(GeoPoint(data["lat"], data["long"]), checked)
+        junction_name += ", ".join(set([i.name for i in settings.G.graph[end_node].neighbours.values() if i.name != "unnamed road"]))
+        checked.add(end_node)
+    print("junction name:", junction_name)
+    print("some route data", data)
+    route = Route(
+        user=data["username"],
+        end_lat=data["lat"],
+        end_long=data["long"],
+        end_time=data["endTime"],
+        routeName=data["name"],
+        junction_name = junction_name
+    )
+    route.save()
+    print("junction name:", junction_name)
+    print(route)
+    for i in data["friends"].values():
+        route.participants.add(User.objects.get(username=i))
+    return JsonResponse({"success": True})
+ 
     
 def get_other_geometry(path: Path):
     other_paths = Path.objects.filter(related_route=path.related_route).exclude(id=path.id)
@@ -328,6 +336,7 @@ def getRoutes(_, user):
             "long": route.end_long,
             "endTime": route.end_time,
             "name": route.routeName,
+            "junction_name":route.junction_name,
             "friends": {}
         }
         for j, friend in enumerate(route.participants.all()):

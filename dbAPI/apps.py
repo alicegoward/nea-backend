@@ -19,8 +19,10 @@ class dbAPIConfig(AppConfig):
             if "geometry" in data:
                 for point in data["geometry"].coords:
                     line.append(GeoPoint(point[1], point[0]))
+            if "name" in data: name = data["name"]
+            else: name = "unnamed road"
             line.append(settings.G.graph[v].position)
-            edge = Edge(data["length"], tuple(line))
+            edge = Edge(data["length"], tuple(line), name)
             if v in settings.G.graph[u].neighbours:
                 if settings.G.graph[u].neighbours[v].length > data["length"]:
                     settings.G.graph[u].neighbours[v] = edge

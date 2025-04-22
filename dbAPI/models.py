@@ -44,6 +44,7 @@ class Route(models.Model):
     end_long = models.FloatField()
     end_time = models.BigIntegerField()
     participants = models.ManyToManyField("user")
+    junction_name = models.CharField(max_length=1000)
 
     def __str__(self):
         return "route"+str(self.end_lat)+self.user+str(self.end_long)
