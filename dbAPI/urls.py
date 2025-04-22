@@ -6,6 +6,7 @@ urlpatterns = [
     path("add_location", views.location_update, name="add_location"),
 
     path("route/create", views.add_route, name = "add_route"),
+    path("route/update", views.update_route, name = "update route"),
     path("get_route/<str:user>", views.getRoutes, name="get_route"),
     path("route/deactivate/<str:user>", views.deactivate, name="deactivate"),
     path("route/sample", views.sampleRoute, name = "sample_route"),
