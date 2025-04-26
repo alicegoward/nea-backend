@@ -36,6 +36,10 @@ class Path(models.Model):
     offset_from_start = models.FloatField(null=True)
     related_route = models.ForeignKey('Route', on_delete=models.CASCADE, related_name='+', null=True)
     eta = models.DateTimeField(default=datetime.now())
+
+class UserOnRoute(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    route = models.ForeignKey('Route', on_delete=models.CASCADE)
     
 class Route(models.Model):
     routeName = models.CharField(max_length=200)
@@ -43,7 +47,6 @@ class Route(models.Model):
     end_lat = models.FloatField()
     end_long = models.FloatField()
     end_time = models.BigIntegerField()
-    participants = models.ManyToManyField("user")
     junction_name = models.CharField(max_length=1000)
 
     def __str__(self):

@@ -2,7 +2,7 @@ from json import loads
 from django.forms.models import model_to_dict
 from django.http import JsonResponse
 
-from .models import Location_data, User, Notification, Route, Path, PathNode, Waypoint
+from .models import Location_data, User, Notification, Route, Path, PathNode, Waypoint, UserOnRoute
 from random import randint
 import time
 from django.db.models import Q
@@ -34,8 +34,7 @@ def add_route(request):
     route.save()
     print(route)
     for i in data["friends"].values():
-        route.participants.add(User.objects.get(username=i))
-    route.save()
+        UserOnRoute(user = User.objects.get(username=i), route = route).save()
     return JsonResponse({"success": True})
 
 
@@ -48,10 +47,11 @@ def update_route(request):
         route.end_long = float(data["long"])
         route.junction_name = getJunctionName(GeoPoint(route.end_lat, route.end_long))
     else:
-        print([User.objects.get(username = i[1]) for i in data.items() if i[0] != "route"])
-        route.participants.set([User.objects.get(username = i[1]) for i in data.items() if i[0] != "route"])
-    
-    route.save()
+        UserOnRoute.objects.filter(route = route).delete()
+        for i in data.items():
+            if i[0] != "route":
+                UserOnRoute(route = route, user = User.objects.get(username = i[1])).save()
+
     return JsonResponse({"success": True})
 
 
@@ -342,7 +342,7 @@ def sampleRoute(request):
     return activate_route(loads(request.body))
 
 def getRoutes(_, user):
-    routes = Route.objects.filter(Q(user=user) | Q(participants=user))
+    routes = Route.objects.filter(Q(user=user) | Q(useronroute__user=user))
     print(routes)
     data = {"success": True, "data": {}}
     for i, route in enumerate(routes):
@@ -355,7 +355,7 @@ def getRoutes(_, user):
             "junction_name":route.junction_name,
             "friends": {}
         }
-        for j, friend in enumerate(route.participants.all()):
+        for j, friend in enumerate(User.objects.filter(useronroute__route=route)):
             route_data["friends"][j] = friend.username
         data["data"][i] = route_data
     return JsonResponse(data)
