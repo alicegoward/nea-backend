@@ -10,6 +10,7 @@ urlpatterns = [
     path("get_route/<str:user>", views.getRoutes, name="get_route"),
     path("route/deactivate/<str:user>", views.deactivate, name="deactivate"),
     path("route/sample", views.sampleRoute, name = "sample_route"),
+    path("route/get_individual_config", views.get_individual_config, name = "individual_config"),
 
     path("user/login", views.user_info, name="user_login"),
     path("user/add", views.add_user, name="user_add"),

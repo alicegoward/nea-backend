@@ -33,8 +33,9 @@ def add_route(request):
     )
     route.save()
     print(route)
+    UserOnRoute(user = User.objects.get(username = route.user), route = route).save()
     for i in data["friends"].values():
-        UserOnRoute(user = User.objects.get(username=i), route = route).save()
+        UserOnRoute(user=User.objects.get(username=i), route=route).save()
     return JsonResponse({"success": True})
 
 
@@ -342,7 +343,7 @@ def sampleRoute(request):
     return activate_route(loads(request.body))
 
 def getRoutes(_, user):
-    routes = Route.objects.filter(Q(user=user) | Q(useronroute__user=user))
+    routes = Route.objects.filter(Q(useronroute__user=user))
     print(routes)
     data = {"success": True, "data": {}}
     for i, route in enumerate(routes):
@@ -518,3 +519,14 @@ def update_friend_state(request):
             datetime=int(time.time())
         ).save()
     accepting.save()
+
+
+def get_individual_config(request):
+    data = loads(request.body)
+    user_on_route = UserOnRoute.objects.get(
+        Q(user = User.objects.get(username = data["user"])) &
+        Q(route = Route.objects.get(routeName = data["route"])))
+    data["create_mor"] = user_on_route.create_mor
+    data["mor_tolerance_s"] = user_on_route.mor_tolerance_s
+    data["reroute_tolerance_m"] = user_on_route.reroute_tolerance_m
+    return JsonResponse(data)

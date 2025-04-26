@@ -40,6 +40,9 @@ class Path(models.Model):
 class UserOnRoute(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     route = models.ForeignKey('Route', on_delete=models.CASCADE)
+    create_mor = models.BooleanField(default=True)
+    mor_tolerance_s = models.FloatField(default=300)
+    reroute_tolerance_m = models.FloatField(default=50)
     
 class Route(models.Model):
     routeName = models.CharField(max_length=200)
