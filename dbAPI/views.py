@@ -319,7 +319,8 @@ def activate_route(data, path_db = None):
     return JsonResponse({"geometry": data, 
                          "dist": get_total_dist(path_db), 
                          "other_paths":get_other_geometry(path_db), 
-                         "waypoints": latlong([settings.G.graph[i].position for i in waypoints.keys()])})
+                         "waypoints": latlong([settings.G.graph[i].position for i in waypoints.keys()]),
+                         "itineraries": get_itineraries(based_on_route)})
 
 
 
@@ -373,7 +374,7 @@ def location_update(request):
     data = loads(request.body)
     path = Path.objects.select_related('current_location').filter(account__username=data["user"]).first()
     if path is None:
-        return JsonResponse({"geometry": {}, "dist": 0, "other_paths": {}})
+        return JsonResponse({"geometry": {}, "dist": 0, "other_paths": {}, "waypoints": {}, "itineraries": {}})
     path.current_location.datetime = data["datetime"]
     path.current_location.lat = data["position"]["lat"]
     path.current_location.long = data["position"]["long"]
@@ -381,7 +382,7 @@ def location_update(request):
 
     data["route"] = path.related_route.routeName
 
-    if path.start_node is None: return JsonResponse({"geometry": {}, "dist": 0, "other_paths": {}})
+    if path.start_node is None: return JsonResponse({"geometry": {}, "dist": 0, "other_paths": {}, "waypoints": {}, "itineraries": {}})
     previous_node = path.start_node
     current_node = previous_node.child_node
     geometry_path = [settings.G.graph[current_node.node_id].position]
@@ -429,7 +430,7 @@ def location_update(request):
                          "dist": get_total_dist(path), 
                          "other_paths": get_other_geometry(path), 
                          "waypoints": latlong([settings.G.graph[i.node_id].position for i in waypoint_nodes if i is not None]),
-                         "itineraries": get_itineraries(path.related_route)},)
+                         "itineraries": get_itineraries(path.related_route)})
 
 
 def user_info(request):
