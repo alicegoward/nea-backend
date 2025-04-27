@@ -530,3 +530,15 @@ def get_individual_config(request):
     data["mor_tolerance_s"] = user_on_route.mor_tolerance_s
     data["reroute_tolerance_m"] = user_on_route.reroute_tolerance_m
     return JsonResponse(data)
+
+
+def set_individual_config(request):
+    data = loads(request.body)
+    user_on_route = UserOnRoute.objects.get(
+        Q(user = User.objects.get(username = data["user"])) &
+        Q(route = Route.objects.get(routeName = data["route"])))
+    user_on_route.create_mor = data["create_mor"]
+    user_on_route.mor_tolerance_s = data["mor_tolerance_s"]
+    user_on_route.reroute_tolerance_m = data["reroute_tolerance_m"]
+    user_on_route.save()
+    return JsonResponse({"success": True})
