@@ -32,7 +32,6 @@ def add_route(request):
         junction_name = getJunctionName(GeoPoint(data["lat"], data["long"]))
     )
     route.save()
-    print(route)
     UserOnRoute(user = User.objects.get(username = route.user), route = route).save()
     for i in data["friends"].values():
         UserOnRoute(user=User.objects.get(username=i), route=route).save()
@@ -109,12 +108,6 @@ def latlong(nodes):
     return data
 
 def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meeting_node, waypoints, path_db):
-    print(not_start, start, end, path_from_start, path_from_end, meeting_node, waypoints, path_db)
-    print(start, meeting_node, end)
-    print("path from end:")
-    [print(f"{i[0]}: f{i[1]}") for i in path_from_end.items()]
-    print("path from start")
-    [print(f"{i[0]}: f{i[1]}") for i in path_from_start.items()]
     node_list = []
     if meeting_node is not None:
         node = meeting_node
@@ -128,7 +121,6 @@ def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meet
         while node != start:
             node = path_from_start[node].parent
             before_node.append(node)
-            print("before node")
         node_list += before_node
     else:
         node = end
@@ -140,7 +132,6 @@ def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meet
     if not_start is None:
         node = path_db.start_node
         while node.node_id != start:
-            print(node)
             route_start.append(node.node_id)
             node = node.child_node
     else:
@@ -198,14 +189,11 @@ def activate_route(data, path_db = None):
 
     if path_db is None: path_db = Path(account=user, related_route=based_on_route)
     else: cleanup_path(path_db)
-    print("end time: " + str(based_on_route.end_time) + " start time " + str(data["datetime"]))
     max_time_millis = based_on_route.end_time - data["datetime"] + UserOnRoute.objects.get(user=user, route=based_on_route).mor_tolerance_s
-    max_dist = max_time_millis * 4800 / (1000 * 60 * 60)
+    max_dist = max_time_millis * 4800 / (60 * 60)
     end_coord = GeoPoint(based_on_route.end_lat, based_on_route.end_long)
-    print(other_paths, max_dist)
-    joiner_mor_tolerance_m = UserOnRoute.objects.get(user=user, route=based_on_route).mor_tolerance_s * 4800 / (1000 * 60 * 60)
+    joiner_mor_tolerance_m = UserOnRoute.objects.get(user=user, route=based_on_route).mor_tolerance_s * 4800 / (60 * 60)
 
-    print(f"coords {start_coord}, {end_coord}")
     a, b = settings.G.closest_pair_from_lat_long(start_coord)
     end = settings.G.closest_from_lat_long(end_coord)
     if ((settings.G.graph[a].position.long - end_coord.long) ** 2 + (
@@ -230,13 +218,8 @@ def activate_route(data, path_db = None):
     movable_paths: dict[Path, NodeWithOffset] = dict()  # THESE ARE START NODES !!!!
     move_other_path = True
 
-    print(f"nodes: {start}, {end}")
-    print("starting to make route")
     route = settings.G.dijkstra(start, (end,))
-    print("found dijkstra")
     if route[end].dist < max_dist:
-        print("in if statement")
-        print(other_paths)
         for path in other_paths:
             total_path_dist = path.start_node.dist_to_end - path.offset_from_start
             nodes_to_add = [path.start_node]
@@ -252,7 +235,6 @@ def activate_route(data, path_db = None):
 
         path_from_end = settings.G.dijkstra(end, tuple([start] + [i.node_id for i in movable_paths.values()]))
         min_dist_until_meet = float('inf')
-        print("found movable / set paths")
 
         # CHECK MOVABLE PATHS
         for path, path_start in movable_paths.items():
@@ -272,7 +254,7 @@ def activate_route(data, path_db = None):
                         dist_new_b += distance_difference_to_node
                     else:
                         dist_new_a -= distance_difference_to_node
-                    mor_tolerance_m = min(joiner_mor_tolerance_m, path.mor_tolerance_s * 4800 / (1000 * 60 * 60))
+                    mor_tolerance_m = min(joiner_mor_tolerance_m, path.mor_tolerance_s * 4800 / (60 * 60))
                     if (abs(distance_difference_to_node) < mor_tolerance_m and route[
                         node].dist - route_start_offset < min_dist_until_meet
                             and dist_new_a - dist_old_a < mor_tolerance_m and dist_new_b - dist_old_b < mor_tolerance_m
@@ -280,12 +262,11 @@ def activate_route(data, path_db = None):
                         meeting_node = node
                         meeting_path = path
                         min_dist_until_meet = route[node].dist - route_start_offset
-        print("checked movable paths")
 
         # CHECK SET PATHS
         for path, node_list in set_paths.items():
             for node in node_list:
-                mor_tolerance_m = min(joiner_mor_tolerance_m, path.mor_tolerance_s * 4800 / (1000 * 60 * 60))
+                mor_tolerance_m = min(joiner_mor_tolerance_m, path.mor_tolerance_s * 4800 / (60 * 60))
                 total_path_dist = route[node.node_id].dist + path_from_end[node.node_id].dist - route_start_offset
                 dist_old = route[end].dist - route_start_offset
                 distance_difference_to_node = node.dist_from_now - route[node.node_id].dist
@@ -295,9 +276,6 @@ def activate_route(data, path_db = None):
                         meeting_path = path
                         move_other_path = False
                         min_dist_until_meet = route[node.node_id].dist - route_start_offset
-        print("checked set paths")
-    
-    print("found applicable meeting points")
 
     waypoint_list = Waypoint.objects.all()
     waypoints = dict()
@@ -312,7 +290,6 @@ def activate_route(data, path_db = None):
         else:
             new_waypoint = waypoints[meeting_node]
             
-    print("getting route from nodes")
 
     path_db.current_location = Location_data(datetime=data["datetime"], lat=data["position"]["lat"], long=data["position"]["long"])
     path_db.current_location.save()
@@ -352,7 +329,6 @@ def sampleRoute(request):
 
 def getRoutes(_, user):
     routes = Route.objects.filter(Q(useronroute__user=user))
-    print(routes)
     data = {"success": True, "data": {}}
     for i, route in enumerate(routes):
         route_data = {
@@ -368,6 +344,29 @@ def getRoutes(_, user):
             route_data["friends"][j] = friend.username
         data["data"][i] = route_data
     return JsonResponse(data)
+
+def get_itineraries(route: Route):
+    paths = Path.objects.filter(related_route = route)
+    out = dict()
+    for path_idx, path in enumerate(paths):
+        data = dict()
+        data["username"] = path.account.username
+        data["eta"] = path.eta.timestamp()
+        data["waypoints"] = dict()
+        for waypoint_idx, waypoint in enumerate(i.waypoint for i in PathNode.objects.filter(path_on = path).exclude(waypoint = None)):
+            waypoint_data = {"participants": dict()}
+            waypoint_participants = PathNode.objects.filter(waypoint = waypoint)
+            for node_idx, participating_node in enumerate(waypoint_participants):
+                waypoint_data["participants"][node_idx] = participating_node.path_on.account.username
+            node = waypoint_participants[0]
+            dist_to_end = node.dist_to_end
+            while node != node.path_on.end_node:
+                node = node.child_node
+                dist_to_end += node.dist_waiting_at_node
+            waypoint_data["eta"] = (path.eta - timedelta(seconds=(dist_to_end * 60 * 60 / 4800))).timestamp()
+            data["waypoints"][waypoint_idx] = waypoint_data
+        out[path_idx] = data
+    return out
 
 
 def location_update(request):
@@ -389,12 +388,9 @@ def location_update(request):
     if current_node.child_node is not None:
         next_node = current_node.child_node
         closest_lines_to_node = settings.G.dist_to_path_from_node(current_node.node_id,
-                                                                  GeoPoint(path.current_location.lat,
-                                                                           path.current_location.long))
+                                                                  GeoPoint(path.current_location.lat, path.current_location.long))
         while closest_lines_to_node[next_node.node_id] < closest_lines_to_node[previous_node.node_id]:
-            print("next section")
             path.start_node = current_node
-            print(path.start_node)
             previous_node.delete()
             previous_node = current_node
             current_node = next_node
@@ -404,7 +400,6 @@ def location_update(request):
                                                                                path.current_location.long))
             if next_node is None: break
         if closest_lines_to_node[previous_node.node_id] > UserOnRoute.objects.get(user = path.account, route = path.related_route).reroute_tolerance_m:
-            print("gone off course distance" + str(closest_lines_to_node[previous_node.node_id]))
             Notification(notification="gone off course (distance)", user=data["user"], datetime=int(time.time())).save()
             return activate_route(data, path)
 
@@ -422,25 +417,25 @@ def location_update(request):
                               (path.current_location.long - settings.G.graph[
                                   path.start_node.node_id].position.long) ** 2) ** (1 / 2)
     if abs((now() - path.eta + timedelta(seconds=get_total_dist(path) / 1.34)).total_seconds()) > 60:
-        print("gone off course time" + str(abs((path.eta - now() + timedelta(seconds=get_total_dist(path) / 1.34)).total_seconds())))
         Notification(notification="gone off course (time)", user=data["user"], datetime=int(time.time())).save()
         return activate_route(data, path)
 
     path.save()
 
+    get_itineraries(path.related_route)
 
     waypoint_nodes = [PathNode.objects.filter(waypoint = i).all().first() for i in Waypoint.objects.all()]
     return JsonResponse({"geometry": latlong(geometry_path), 
                          "dist": get_total_dist(path), 
                          "other_paths": get_other_geometry(path), 
-                         "waypoints": latlong([settings.G.graph[i.node_id].position for i in waypoint_nodes if i is not None])})
+                         "waypoints": latlong([settings.G.graph[i.node_id].position for i in waypoint_nodes if i is not None]),
+                         "itineraries": get_itineraries(path.related_route)},)
 
 
 def user_info(request):
     try:
         data = loads(request.body)
         user = model_to_dict(User.objects.get(username=data["username"], password=data["password"]))
-        print(user)
         user["success"] = True
         user.pop("friends")
         return JsonResponse(user)
@@ -490,7 +485,6 @@ def get_friends(_, user):
         outgoing_data = {}
         for i, friend in enumerate(User.objects.filter(pending_friends=user)):
             outgoing_data[i] = friend.username
-        print(f"{friend_data}\n{incoming_data}\n{outgoing_data}")
         return JsonResponse(
             {"success": True, "names": friend_data, "incoming": incoming_data, "outgoing": outgoing_data})
     except Exception as e:

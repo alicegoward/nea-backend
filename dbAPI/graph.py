@@ -95,7 +95,6 @@ class Graph:
                 else:
                     o_x, o_y = b_x, b_y
             dist = ((o_x-p_x)**2 + (o_y-p_y)**2)**0.5
-            print(dist)
             result[b_id] = dist
         return result
     
