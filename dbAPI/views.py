@@ -5,7 +5,7 @@ from django.http import JsonResponse
 from .models import Location_data, User, Notification, Route, Path, PathNode, Waypoint, UserOnRoute
 from random import randint
 import time
-from django.db.models import Q
+from django.db.models import Q, Subquery, OuterRef, Exists
 from django.conf import settings
 from datetime import timedelta
 from django.utils.timezone import now
@@ -186,18 +186,24 @@ def cleanup_path(path_db: Path):
     fix_waypoints(waypoints)
 
 def activate_route(data, path_db = None):
-    tolerance_s = 5 * 60
-    tolerance_m = tolerance_s * 4800 / (60 * 60)
     start_coord = GeoPoint(data["position"]["lat"], data["position"]["long"])
     based_on_route = Route.objects.get(routeName=data["route"])
-    other_paths = Path.objects.filter(related_route=based_on_route).exclude(account = User.objects.get(username=data["user"])).all()
-    if path_db is None: path_db = Path(account=User.objects.get(username=data["user"]), related_route=based_on_route)
+    user = User.objects.get(username=data["user"])
+
+    other_paths = (Path.objects.filter(related_route=based_on_route).exclude(account=user)
+        .annotate(
+            has_mor=Exists(UserOnRoute.objects.filter(user=OuterRef('account'),route=based_on_route,create_mor=True)),
+            mor_tolerance_s=Subquery(UserOnRoute.objects.filter(user=OuterRef('account'),route=based_on_route).values('mor_tolerance_s'))
+        ).filter(has_mor=True).all())
+
+    if path_db is None: path_db = Path(account=user, related_route=based_on_route)
     else: cleanup_path(path_db)
     print("end time: " + str(based_on_route.end_time) + " start time " + str(data["datetime"]))
-    max_time_millis = based_on_route.end_time - data["datetime"] + tolerance_s
+    max_time_millis = based_on_route.end_time - data["datetime"] + UserOnRoute.objects.get(user=user, route=based_on_route).mor_tolerance_s
     max_dist = max_time_millis * 4800 / (1000 * 60 * 60)
     end_coord = GeoPoint(based_on_route.end_lat, based_on_route.end_long)
     print(other_paths, max_dist)
+    joiner_mor_tolerance_m = UserOnRoute.objects.get(user=user, route=based_on_route).mor_tolerance_s * 4800 / (1000 * 60 * 60)
 
     print(f"coords {start_coord}, {end_coord}")
     a, b = settings.G.closest_pair_from_lat_long(start_coord)
@@ -266,9 +272,10 @@ def activate_route(data, path_db = None):
                         dist_new_b += distance_difference_to_node
                     else:
                         dist_new_a -= distance_difference_to_node
-                    if (abs(distance_difference_to_node) < tolerance_m and route[
+                    mor_tolerance_m = min(joiner_mor_tolerance_m, path.mor_tolerance_s * 4800 / (1000 * 60 * 60))
+                    if (abs(distance_difference_to_node) < mor_tolerance_m and route[
                         node].dist - route_start_offset < min_dist_until_meet
-                            and dist_new_a - dist_old_a < tolerance_m and dist_new_b - dist_old_b < tolerance_m
+                            and dist_new_a - dist_old_a < mor_tolerance_m and dist_new_b - dist_old_b < mor_tolerance_m
                             and dist_new_a < max_dist and dist_new_b < max_dist):
                         meeting_node = node
                         meeting_path = path
@@ -278,10 +285,11 @@ def activate_route(data, path_db = None):
         # CHECK SET PATHS
         for path, node_list in set_paths.items():
             for node in node_list:
+                mor_tolerance_m = min(joiner_mor_tolerance_m, path.mor_tolerance_s * 4800 / (1000 * 60 * 60))
                 total_path_dist = route[node.node_id].dist + path_from_end[node.node_id].dist - route_start_offset
                 dist_old = route[end].dist - route_start_offset
                 distance_difference_to_node = node.dist_from_now - route[node.node_id].dist
-                if distance_difference_to_node < tolerance_m and total_path_dist - dist_old < tolerance_m:
+                if distance_difference_to_node < mor_tolerance_m and total_path_dist - dist_old < mor_tolerance_m:
                     if route[node.node_id].dist - route_start_offset < min_dist_until_meet:
                         meeting_node = node.node_id
                         meeting_path = path
@@ -395,7 +403,7 @@ def location_update(request):
                                                                       GeoPoint(path.current_location.lat,
                                                                                path.current_location.long))
             if next_node is None: break
-        if closest_lines_to_node[previous_node.node_id] > 0.001:
+        if closest_lines_to_node[previous_node.node_id] > UserOnRoute.objects.get(user = path.account, route = path.related_route).reroute_tolerance_m:
             print("gone off course distance" + str(closest_lines_to_node[previous_node.node_id]))
             Notification(notification="gone off course (distance)", user=data["user"], datetime=int(time.time())).save()
             return activate_route(data, path)
