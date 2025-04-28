@@ -12,6 +12,7 @@ urlpatterns = [
     path("route/sample", views.sampleRoute, name = "sample_route"),
     path("route/get_individual_config", views.get_individual_config, name = "get_individual_config"),
     path("route/set_individual_config", views.set_individual_config, name="set_individual_config"),
+    path("route/notify_others", views.notify_others, name="notify_others"),
 
     path("user/login", views.user_info, name="user_login"),
     path("user/add", views.add_user, name="user_add"),

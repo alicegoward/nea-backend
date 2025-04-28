@@ -1,6 +1,7 @@
 from json import loads
 from django.forms.models import model_to_dict
 from django.http import JsonResponse
+from django.utils import timezone
 
 from .models import Location_data, User, Notification, Route, Path, PathNode, Waypoint, UserOnRoute
 from random import randint
@@ -312,6 +313,11 @@ def activate_route(data, path_db = None):
     else:
         main_path_geometry = route_from_nodes(not_start, start, end, route, path_from_end, None, waypoints, path_db)
 
+    if path_db.eta.timestamp() - 5 > based_on_route.end_time:
+        for i in UserOnRoute.objects.filter(route = based_on_route).exclude(user = user):
+            Notification(user=i.user.username,
+                         notification=f"{user.username} is running {int((path_db.eta.timestamp() - based_on_route.end_time)/60)} minutes late",
+                         datetime=int(time.time())).save()
 
     data = {}
     for idx, point in enumerate(main_path_geometry):
@@ -417,6 +423,7 @@ def location_update(request):
         path.start_node.node_id].position.lat) ** 2 +
                               (path.current_location.long - settings.G.graph[
                                   path.start_node.node_id].position.long) ** 2) ** (1 / 2)
+
     if abs((now() - path.eta + timedelta(seconds=get_total_dist(path) / 1.34)).total_seconds()) > 60:
         Notification(notification="gone off course (time)", user=data["user"], datetime=int(time.time())).save()
         return activate_route(data, path)
@@ -544,4 +551,11 @@ def set_individual_config(request):
     user_on_route.mor_tolerance_s = data["mor_tolerance_s"]
     user_on_route.reroute_tolerance_m = data["reroute_tolerance_m"]
     user_on_route.save()
+    return JsonResponse({"success": True})
+
+
+def notify_others(request):
+    data = loads(request.body)
+    for i in UserOnRoute.objects.filter(route__routeName = data["route"]).exclude(user__username = data["user"]):
+        Notification(user = i.user.username, notification = data["data"], datetime = int(time.time())).save()
     return JsonResponse({"success": True})
