@@ -424,7 +424,7 @@ def location_update(request):
                               (path.current_location.long - settings.G.graph[
                                   path.start_node.node_id].position.long) ** 2) ** (1 / 2)
 
-    if abs((now() - path.eta + timedelta(seconds=get_total_dist(path) / 1.34)).total_seconds()) > 60:
+    if abs((now() - path.eta + timedelta(seconds=get_total_dist(path) / 1.34)).total_seconds()) > UserOnRoute.objects.get(user = path.account, route = path.related_route).auto_notify_late:
         Notification(notification="gone off course (time)", user=data["user"], datetime=int(time.time())).save()
         return activate_route(data, path)
 
@@ -539,6 +539,7 @@ def get_individual_config(request):
     data["create_mor"] = user_on_route.create_mor
     data["mor_tolerance_s"] = user_on_route.mor_tolerance_s
     data["reroute_tolerance_m"] = user_on_route.reroute_tolerance_m
+    data["auto_notify_late"] = user_on_route.auto_notify_late
     return JsonResponse(data)
 
 
@@ -550,6 +551,7 @@ def set_individual_config(request):
     user_on_route.create_mor = data["create_mor"]
     user_on_route.mor_tolerance_s = data["mor_tolerance_s"]
     user_on_route.reroute_tolerance_m = data["reroute_tolerance_m"]
+    user_on_route.auto_notify_late = data["auto_notify_late"]
     user_on_route.save()
     return JsonResponse({"success": True})
 

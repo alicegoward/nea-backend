@@ -43,6 +43,7 @@ class UserOnRoute(models.Model):
     create_mor = models.BooleanField(default=True)
     mor_tolerance_s = models.FloatField(default=300)
     reroute_tolerance_m = models.FloatField(default=50)
+    auto_notify_late = models.FloatField(default=600)
     
 class Route(models.Model):
     routeName = models.CharField(max_length=200)
