@@ -9,7 +9,7 @@ class dbAPIConfig(AppConfig):
     def ready(self):
         from django.conf import settings
         print("here")
-        raw_map = osmnx.graph.graph_from_bbox((-0.23535,51.47026,-0.20488,51.46260 ), network_type="walk", simplify=True)
+        raw_map = osmnx.graph.graph_from_bbox((-0.24689,51.50247,-0.18595,51.48607), network_type="walk", simplify=True)
         print(raw_map)
         settings.G = Graph()
         for node_id, data in raw_map.nodes(data=True):

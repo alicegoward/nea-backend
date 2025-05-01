@@ -77,6 +77,7 @@ class Graph:
         result = dict()
         for b_id in self.graph[a_id].neighbours:
             b_x = (self.graph[b_id].position.long - self.graph[a_id].position.long) * 111000 * math.cos(math.radians(self.graph[a_id].position.lat))
+            if b_x == 0: b_x = 1e-10
             b_y = (self.graph[b_id].position.lat - self.graph[a_id].position.lat) * 111000
             p_x = point.long - self.graph[a_id].position.long
             p_y = point.lat - self.graph[a_id].position.lat
