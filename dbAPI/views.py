@@ -61,6 +61,7 @@ def get_other_geometry(path: Path):
     other_paths = Path.objects.filter(related_route=path.related_route).exclude(id=path.id)
     data = dict()
     for path in other_paths:
+        if path.start_node is None: return data
         previous_node = path.start_node
         current_node = previous_node.child_node
         next_node = current_node.child_node
@@ -131,7 +132,7 @@ def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meet
     else:
         node = end
         node_list.append(node)
-        while node != start:
+        while node != start and node in path_from_start:
             node = path_from_start[node].parent
             node_list.append(node)
     route_start = []
@@ -308,12 +309,15 @@ def activate_route(data, path_db=None):
 
     waypoint_list = Waypoint.objects.all()
     waypoints = dict()
+    print("MEETING NODE!!!", meeting_node)
+
     for i in waypoint_list:
         node = PathNode.objects.filter(waypoint=i).all().first()
         if node is not None: waypoints[node.node_id] = i
     new_waypoint = None
     if meeting_node is not None:
-        if meeting_node not in waypoints.values():
+        print("these are the waypoints",waypoints, meeting_node)
+        if meeting_node not in waypoints.keys():
             new_waypoint = Waypoint()
             new_waypoint.save()
             waypoints[meeting_node] = new_waypoint
@@ -329,15 +333,15 @@ def activate_route(data, path_db=None):
     if meeting_node is not None:
         main_path_geometry = route_from_nodes(not_start, start, end, route, path_from_end, meeting_node, waypoints,
                                               path_db)
+        if move_other_path:
+            route_from_nodes(None, movable_paths[meeting_path].node_id, end, paths_could_meet[meeting_path], path_from_end,
+                             meeting_node, waypoints, meeting_path)
         print(meeting_node)
-        paths_to_move_nodes = PathNode.objects.filter(node_id=meeting_node).exclude(path_on=path_db)
+        paths_to_move_nodes = PathNode.objects.filter(node_id=meeting_node)
         print(paths_to_move_nodes, paths_to_move_nodes.count())
         for i in paths_to_move_nodes:
-            route_from_nodes(None, movable_paths[i.path_on].node_id, end, paths_could_meet[i.path_on], path_from_end,
-                             meeting_node, waypoints, i.path_on)
-        meeting_other_node = PathNode.objects.filter(node_id=meeting_node)[0]
-        meeting_other_node.waypoint = new_waypoint
-        meeting_other_node.save()
+            i.waypoint = new_waypoint
+            i.save()
         fix_waypoints(waypoints)
         new_waypoint.save()
         print(new_waypoint)
