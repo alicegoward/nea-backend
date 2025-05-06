@@ -404,7 +404,7 @@ def get_itineraries(route: Route):
     for path_idx, path in enumerate(paths):
         data = dict()
         data["username"] = path.account.username
-        data["eta"] = path.eta.timestamp()
+        data["eta"] = time.time()+get_total_dist(path)
         data["waypoints"] = dict()
         for waypoint_idx, waypoint in enumerate(
                 i.waypoint for i in PathNode.objects.filter(path_on=path).exclude(waypoint=None)):
@@ -417,7 +417,7 @@ def get_itineraries(route: Route):
             while node is not None:
                 dist_to_end += node.dist_waiting_at_node
                 node = node.child_node
-            waypoint_data["eta"] = (path.eta - timedelta(seconds=(dist_to_end * 60 * 60 / 4800))).timestamp()
+            waypoint_data["eta"] = time.time() + get_total_dist(waypoint_participants[0].path_on) - dist_to_end * 60 * 60 / 4800
             data["waypoints"][waypoint_idx] = waypoint_data
         out[path_idx] = data
     return out
