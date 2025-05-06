@@ -171,6 +171,8 @@ def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meet
     for i in nodes_db: i.save()
     path_db.start_node = nodes_db[-1]
     path_db.end_node = nodes_db[0]
+    old_nodes = PathNode.objects.filter(path_on=path_db).exclude(id__in=[i.id for i in nodes_db])
+    for i in old_nodes: i.delete()
     path_db.save()
     path_db.eta = now() + timedelta(seconds=get_total_dist(path_db) / 1.34)
     path_db.save()
