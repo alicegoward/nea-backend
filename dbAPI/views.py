@@ -336,8 +336,10 @@ def activate_route(data, path_db=None):
         main_path_geometry = route_from_nodes(not_start, start, end, route, path_from_end, meeting_node, waypoints,
                                               path_db)
         if move_other_path:
-            route_from_nodes(None, movable_paths[meeting_path].node_id, end, paths_could_meet[meeting_path], path_from_end,
-                             meeting_node, waypoints, meeting_path)
+            moving_paths = [i[0] for i in movable_paths.items() if i[1].node_id == movable_paths[meeting_path].node_id]
+            for path_to_move in moving_paths:
+                route_from_nodes(None, movable_paths[path_to_move].node_id, end, paths_could_meet[path_to_move], path_from_end,
+                             meeting_node, waypoints, path_to_move)
         print(meeting_node)
         paths_to_move_nodes = PathNode.objects.filter(node_id=meeting_node)
         print(paths_to_move_nodes, paths_to_move_nodes.count())
