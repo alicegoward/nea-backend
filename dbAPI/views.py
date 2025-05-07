@@ -96,15 +96,18 @@ def fix_waypoints(waypoints):
                 ).save()
             waypoint.delete()
         else:
-            max_dist_to_end = max(nodes_at_waypoint, key=lambda k: k.dist_to_end).dist_to_end
+            max_dist_to_end = max(nodes_at_waypoint, key=lambda k: k.path_on.start_node.dist_to_end).path_on.start_node.dist_to_end
             for node in nodes_at_waypoint:
-                node.dist_waiting_at_node = max_dist_to_end - node.dist_to_end
+                node.dist_waiting_at_node = max_dist_to_end - node.path_on.start_node.dist_to_end
                 node.save()
 
 
 def get_total_dist(path: Path):
     return path.start_node.dist_to_end - path.offset_from_start + sum(
         i.dist_waiting_at_node for i in PathNode.objects.filter(path_on=path).all())
+
+def get_total_time(path: Path):
+    return get_total_dist(path) * 60 * 60 / 4800
 
 
 def latlong(nodes):
@@ -174,7 +177,7 @@ def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meet
     old_nodes = PathNode.objects.filter(path_on=path_db).exclude(id__in=[i.id for i in nodes_db])
     for i in old_nodes: i.delete()
     path_db.save()
-    path_db.eta = now() + timedelta(seconds=get_total_dist(path_db) / 1.34)
+    path_db.eta = now() + timedelta(seconds=get_total_time(path_db))
     path_db.save()
     return main_path_geometry
 
@@ -311,14 +314,12 @@ def activate_route(data, path_db=None):
 
     waypoint_list = Waypoint.objects.all()
     waypoints = dict()
-    print("MEETING NODE!!!", meeting_node)
 
     for i in waypoint_list:
         node = PathNode.objects.filter(waypoint=i).all().first()
         if node is not None: waypoints[node.node_id] = i
     new_waypoint = None
     if meeting_node is not None:
-        print("these are the waypoints",waypoints, meeting_node)
         if meeting_node not in waypoints.keys():
             new_waypoint = Waypoint()
             new_waypoint.save()
@@ -340,15 +341,12 @@ def activate_route(data, path_db=None):
             for path_to_move in moving_paths:
                 route_from_nodes(None, movable_paths[path_to_move].node_id, end, paths_could_meet[path_to_move], path_from_end,
                              meeting_node, waypoints, path_to_move)
-        print(meeting_node)
         paths_to_move_nodes = PathNode.objects.filter(node_id=meeting_node)
-        print(paths_to_move_nodes, paths_to_move_nodes.count())
         for i in paths_to_move_nodes:
             i.waypoint = new_waypoint
             i.save()
         fix_waypoints(waypoints)
         new_waypoint.save()
-        print(new_waypoint)
         for i in PathNode.objects.all():
             if i.waypoint == new_waypoint:
                 Notification(
@@ -406,7 +404,7 @@ def get_itineraries(route: Route):
     for path_idx, path in enumerate(paths):
         data = dict()
         data["username"] = path.account.username
-        data["eta"] = time.time()+get_total_dist(path)
+        data["eta"] = time.time()+ get_total_time(path)
         data["waypoints"] = dict()
         for waypoint_idx, waypoint in enumerate(
                 i.waypoint for i in PathNode.objects.filter(path_on=path).exclude(waypoint=None)):
@@ -419,7 +417,7 @@ def get_itineraries(route: Route):
             while node is not None:
                 dist_to_end += node.dist_waiting_at_node
                 node = node.child_node
-            waypoint_data["eta"] = time.time() + get_total_dist(waypoint_participants[0].path_on) - dist_to_end * 60 * 60 / 4800
+            waypoint_data["eta"] = time.time() + get_total_time(waypoint_participants[0].path_on) - (dist_to_end * 60 * 60 / 4800)
             data["waypoints"][waypoint_idx] = waypoint_data
         out[path_idx] = data
     return out
@@ -477,7 +475,7 @@ def location_update(request):
                                   path.start_node.node_id].position.long) ** 2) ** (1 / 2)
 
     if abs((now() - path.eta + timedelta(
-            seconds=get_total_dist(path) / 1.34)).total_seconds()) > UserOnRoute.objects.get(user=path.account,
+            seconds=get_total_time(path))).total_seconds()) > UserOnRoute.objects.get(user=path.account,
                                                                                              route=path.related_route).auto_notify_late:
         Notification(notification="gone off course (time)", user=data["user"], datetime=int(time.time())).save()
         return activate_route(data, path)
