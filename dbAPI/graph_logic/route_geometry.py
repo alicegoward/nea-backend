@@ -1,14 +1,14 @@
 from datetime import timedelta
 
+from django.conf import settings
 from django.utils.timezone import now
 
 from dbAPI.graph_logic.nodes import GeoPoint
 from dbAPI.graph_logic.utils import get_total_time
-from dbAPI.models import Path, PathNode
-from mysite import settings
+from dbAPI.models import Path, PathNode, Waypoint
 
 
-def get_other_geometry(path: Path):
+def get_other_geometry(path: Path) -> dict:
     other_paths = Path.objects.filter(related_route=path.related_route).exclude(id=path.id)
     data = dict()
     for path in other_paths:
@@ -33,7 +33,7 @@ def get_other_geometry(path: Path):
     return data
 
 
-def route_from_nodes(not_start, start, end, path_from_start, path_from_end, meeting_node, waypoints, path_db):
+def route_from_nodes(not_start: int|None, start: int, end: int, path_from_start: Path, path_from_end: Path, meeting_node: int, waypoints: dict[int, Waypoint], path_db: Path) -> None|list[GeoPoint]:
     node_list = []
     if meeting_node is not None:
         node = meeting_node

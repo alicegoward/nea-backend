@@ -2,10 +2,11 @@ import time
 
 from django.conf import settings
 
+from dbAPI.graph_logic.nodes import GeoPoint
 from dbAPI.models import Route, Path, PathNode, Notification, Waypoint
 
 
-def get_itineraries(route: Route):
+def get_itineraries(route: Route) -> dict[int, dict]:
     paths = Path.objects.filter(related_route=route)
     out = dict()
     for path_idx, path in enumerate(paths):
@@ -30,7 +31,7 @@ def get_itineraries(route: Route):
     return out
 
 
-def get_junction_name(point):
+def get_junction_name(point: GeoPoint) -> str :
     checked = set()
     junction_name = ""
     while junction_name == "":
@@ -40,15 +41,15 @@ def get_junction_name(point):
         checked.add(end_node)
     return junction_name
 
-def get_total_dist(path: Path):
+def get_total_dist(path: Path) -> float:
     return path.start_node.dist_to_end - path.offset_from_start + sum(
         i.dist_waiting_at_node for i in PathNode.objects.filter(path_on=path).all())
 
-def get_total_time(path: Path):
+def get_total_time(path: Path) -> float:
     return get_total_dist(path) * 60 * 60 / 4800
 
 
-def latlong(nodes):
+def latlong(nodes) -> dict[int, dict[str, float]]:
     data = {}
     for idx, point in enumerate(nodes):
         data[idx] = {"lat": point.lat, "long": point.long}

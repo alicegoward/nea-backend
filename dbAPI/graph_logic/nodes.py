@@ -2,12 +2,12 @@ class GeoPoint:
     def __init__(self, lat: float, long: float) -> None:
         self.lat, self.long = lat, long
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"lat: {self.lat}, long: {self.long}"
 
 
 class NodeWithOffset:
-    def __init__(self, node_id, dist_from_now):
+    def __init__(self, node_id: int, dist_from_now: float):
         self.node_id, self.dist_from_now = node_id, dist_from_now
 
 
@@ -28,7 +28,7 @@ class Node:
 
 
 class DijkstraNode:
-    def __init__(self, distance: float, parent) -> None:
+    def __init__(self, distance: float, parent: int) -> None:
         self.parent = parent
         self.dist = distance
 

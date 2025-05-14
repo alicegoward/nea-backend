@@ -1,13 +1,14 @@
 import time
 from json import loads
 
+from django.core.handlers.wsgi import WSGIRequest
 from django.forms import model_to_dict
 from django.http import JsonResponse
 
 from dbAPI.models import User, Notification
 
 
-def add_friend(request):
+def add_friend(request: WSGIRequest) -> JsonResponse:
     try:
         data = loads(request.body)
         requesting = User.objects.get(username=data["userRequesting"])
@@ -24,7 +25,7 @@ def add_friend(request):
         return JsonResponse({"success": False, "reason": "user does not exist"})
 
 
-def update_friend_state(request):
+def update_friend_state(request: WSGIRequest) -> JsonResponse:
     data = loads(request.body)
     accepting = User.objects.get(username=data["userAccepting"])
     accepted = User.objects.get(username=data["userAccepted"])
@@ -38,7 +39,7 @@ def update_friend_state(request):
         ).save()
     accepting.save()
 
-def user_info(request):
+def user_info(request: WSGIRequest) -> JsonResponse:
     try:
         data = loads(request.body)
         user = model_to_dict(User.objects.get(username=data["username"], password=data["password"]))
@@ -49,7 +50,7 @@ def user_info(request):
         return JsonResponse({"success": False, "reason": "username / password combination does not exist"})
 
 
-def add_user(request):
+def add_user(request: WSGIRequest) -> JsonResponse:
     try:
         data = loads(request.body)
         if User.objects.filter(username=data["username"]).count() > 0:
@@ -59,7 +60,7 @@ def add_user(request):
     except:
         return JsonResponse({"success": False, "reason": "user already taken"})
 
-def get_friends(_, user):
+def get_friends(_, user: str) -> JsonResponse:
     try:
         user = User.objects.get(username=user)
         friend_data = {}

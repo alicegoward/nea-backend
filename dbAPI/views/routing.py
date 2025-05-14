@@ -3,6 +3,7 @@ from datetime import timedelta
 from json import loads
 
 from django.conf import settings
+from django.core.handlers.wsgi import WSGIRequest
 from django.http import JsonResponse
 from django.utils.timezone import now
 
@@ -13,10 +14,10 @@ from dbAPI.models import Path, PathNode, UserOnRoute, Notification, Waypoint
 from dbAPI.views.activate_route import activate_route
 
 
-def sampleRoute(request):
+def sampleRoute(request: WSGIRequest) -> JsonResponse:
     return activate_route(loads(request.body))
 
-def location_update(request):
+def location_update(request: WSGIRequest) -> JsonResponse:
     data = loads(request.body)
     path = Path.objects.select_related('current_location').filter(account__username=data["user"]).first()
     if path is None:

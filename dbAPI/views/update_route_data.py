@@ -1,5 +1,6 @@
 from json import loads
 
+from django.core.handlers.wsgi import WSGIRequest
 from django.db.models import Q
 from django.http import JsonResponse
 
@@ -8,7 +9,7 @@ from dbAPI.graph_logic.utils import get_junction_name, fix_waypoints
 from dbAPI.models import Route, UserOnRoute, User, Waypoint, PathNode, Path
 
 
-def update_route(request):
+def update_route(request: WSGIRequest) -> JsonResponse:
     data = loads(request.body)
     route = Route.objects.get(routeName=data["route"])
     if "time" in data:
@@ -24,7 +25,7 @@ def update_route(request):
                 UserOnRoute(route=route, user=User.objects.get(username=i[1])).save()
     return JsonResponse({"success": True})
 
-def get_individual_config(request):
+def get_individual_config(request: WSGIRequest) -> JsonResponse:
     data = loads(request.body)
     user_on_route = UserOnRoute.objects.get(
         Q(user=User.objects.get(username=data["user"])) &
@@ -36,7 +37,7 @@ def get_individual_config(request):
     return JsonResponse(data)
 
 
-def set_individual_config(request):
+def set_individual_config(request: WSGIRequest) -> JsonResponse:
     data = loads(request.body)
     user_on_route = UserOnRoute.objects.get(
         Q(user=User.objects.get(username=data["user"])) &
@@ -48,7 +49,7 @@ def set_individual_config(request):
     user_on_route.save()
     return JsonResponse({"success": True})
 
-def getRoutes(_, user):
+def getRoutes(_, user: str) -> JsonResponse:
     routes = Route.objects.filter(Q(useronroute__user=user))
     data = {"success": True, "data": {}}
     for i, route in enumerate(routes):
@@ -67,7 +68,7 @@ def getRoutes(_, user):
     return JsonResponse(data)
 
 
-def deactivate(_, user):
+def deactivate(_, user: str) -> JsonResponse:
     Path.objects.filter(account=User.objects.get(username=user)).delete()
     waypoints = dict()
     for i in Waypoint.objects.all():

@@ -1,5 +1,6 @@
 from json import loads
 
+from django.core.handlers.wsgi import WSGIRequest
 from django.http import JsonResponse
 
 from dbAPI.graph_logic.nodes import GeoPoint
@@ -7,7 +8,7 @@ from dbAPI.graph_logic.utils import get_junction_name
 from dbAPI.models import Route, UserOnRoute, User
 
 
-def add_route(request):
+def add_route(request: WSGIRequest) -> JsonResponse:
     data = loads(request.body)
     route = Route(
         user=data["username"],
