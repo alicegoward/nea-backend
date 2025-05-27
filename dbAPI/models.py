@@ -1,5 +1,9 @@
+import uuid
+
 from django.db import models
 from datetime import datetime
+
+from django.utils.crypto import get_random_string
 
 class Location_data(models.Model):
     lat = models.FloatField()
@@ -11,6 +15,7 @@ class User(models.Model):
     password = models.CharField(max_length=200)
     friends = models.ManyToManyField("self", symmetrical=True)
     pending_friends = models.ManyToManyField("self", symmetrical=False)
+    token = models.CharField(max_length=16, default=get_random_string(16))
 
     def __str__(self):
         return self.username

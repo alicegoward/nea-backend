@@ -12,11 +12,9 @@ from dbAPI.graph_logic.utils import cleanup_path, get_total_dist, latlong, get_i
 from dbAPI.models import Route, User, Path, UserOnRoute, Waypoint, PathNode, Location_data, Notification
 
 
-def activate_route(data: dict, path_db: Path|None = None) -> JsonResponse:
+def activate_route(data: dict, user: User, path_db: Path|None = None) -> JsonResponse:
     start_coord = GeoPoint(data["position"]["lat"], data["position"]["long"])
     based_on_route = Route.objects.get(routeName=data["route"])
-    user = User.objects.get(username=data["user"])
-
     other_paths = (Path.objects.filter(related_route=based_on_route).exclude(account=user)
                    .annotate(
         has_mor=Exists(UserOnRoute.objects.filter(user='account', route=based_on_route, create_mor=True)),

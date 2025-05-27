@@ -15,11 +15,11 @@ from dbAPI.views.activate_route import activate_route
 
 
 def sampleRoute(request: WSGIRequest) -> JsonResponse:
-    return activate_route(loads(request.body))
+    return activate_route(loads(request.body), request.user)
 
 def location_update(request: WSGIRequest) -> JsonResponse:
     data = loads(request.body)
-    path = Path.objects.select_related('current_location').filter(account__username=data["user"]).first()
+    path = Path.objects.select_related('current_location').filter(account__username=request.user).first()
     if path is None:
         return JsonResponse({"geometry": {}, "dist": 0, "other_paths": {}, "waypoints": {}, "itineraries": {}})
     path.current_location.datetime = data["datetime"]
@@ -51,7 +51,7 @@ def location_update(request: WSGIRequest) -> JsonResponse:
                                                                                path.current_location.long))
         if closest_lines_to_node[previous_node.node_id] > UserOnRoute.objects.get(user=path.account,
                                                                                   route=path.related_route).reroute_tolerance_m:
-            Notification(notification="gone off course (distance)", user=data["user"], datetime=int(time.time())).save()
+            Notification(notification="gone off course (distance)", user=request.user, datetime=int(time.time())).save()
             return activate_route(data, path)
 
         while next_node is not None:
@@ -71,7 +71,7 @@ def location_update(request: WSGIRequest) -> JsonResponse:
     if abs((now() - path.eta + timedelta(
             seconds=get_total_time(path))).total_seconds()) > UserOnRoute.objects.get(user=path.account,
                                                                                              route=path.related_route).auto_notify_late:
-        Notification(notification="gone off course (time)", user=data["user"], datetime=int(time.time())).save()
+        Notification(notification="gone off course (time)", user=request.user, datetime=int(time.time())).save()
         return activate_route(data, path)
 
     path.save()

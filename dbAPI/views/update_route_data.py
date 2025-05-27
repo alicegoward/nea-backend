@@ -28,7 +28,7 @@ def update_route(request: WSGIRequest) -> JsonResponse:
 def get_individual_config(request: WSGIRequest) -> JsonResponse:
     data = loads(request.body)
     user_on_route = UserOnRoute.objects.get(
-        Q(user=User.objects.get(username=data["user"])) &
+        Q(user=request.user) &
         Q(route=Route.objects.get(routeName=data["route"])))
     data["create_mor"] = user_on_route.create_mor
     data["mor_tolerance_s"] = user_on_route.mor_tolerance_s
@@ -40,7 +40,7 @@ def get_individual_config(request: WSGIRequest) -> JsonResponse:
 def set_individual_config(request: WSGIRequest) -> JsonResponse:
     data = loads(request.body)
     user_on_route = UserOnRoute.objects.get(
-        Q(user=User.objects.get(username=data["user"])) &
+        Q(user=request.user) &
         Q(route=Route.objects.get(routeName=data["route"])))
     user_on_route.create_mor = data["create_mor"]
     user_on_route.mor_tolerance_s = data["mor_tolerance_s"]
@@ -49,8 +49,8 @@ def set_individual_config(request: WSGIRequest) -> JsonResponse:
     user_on_route.save()
     return JsonResponse({"success": True})
 
-def getRoutes(_, user: str) -> JsonResponse:
-    routes = Route.objects.filter(Q(useronroute__user=user))
+def getRoutes(request) -> JsonResponse:
+    routes = Route.objects.filter(Q(useronroute__user=request.user))
     data = {"success": True, "data": {}}
     for i, route in enumerate(routes):
         route_data = {
@@ -68,8 +68,8 @@ def getRoutes(_, user: str) -> JsonResponse:
     return JsonResponse(data)
 
 
-def deactivate(_, user: str) -> JsonResponse:
-    Path.objects.filter(account=User.objects.get(username=user)).delete()
+def deactivate(request) -> JsonResponse:
+    Path.objects.filter(account=User.objects.get(username=request.user)).delete()
     waypoints = dict()
     for i in Waypoint.objects.all():
         node = PathNode.objects.filter(waypoint=i).all().first()

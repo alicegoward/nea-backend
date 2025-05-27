@@ -2,8 +2,8 @@ import time
 from json import loads
 
 from django.core.handlers.wsgi import WSGIRequest
-from django.forms import model_to_dict
 from django.http import JsonResponse
+from django.utils.crypto import get_random_string
 
 from dbAPI.models import User, Notification
 
@@ -39,30 +39,33 @@ def update_friend_state(request: WSGIRequest) -> JsonResponse:
         ).save()
     accepting.save()
 
-def user_info(request: WSGIRequest) -> JsonResponse:
+def login(request: WSGIRequest) -> JsonResponse:
     try:
         data = loads(request.body)
-        user = model_to_dict(User.objects.get(username=data["username"], password=data["password"]))
-        user["success"] = True
-        user.pop("friends")
-        return JsonResponse(user)
-    except:
+        user = User.objects.get(username=data["username"], password=data["password"])
+        token = get_random_string(16)
+        print("TOKEN", token)
+        user.token = token
+        user.save()
+        return JsonResponse({"success": True, "token": token})
+    except Exception as e:
+        print(e)
         return JsonResponse({"success": False, "reason": "username / password combination does not exist"})
 
 
-def add_user(request: WSGIRequest) -> JsonResponse:
+def register(request: WSGIRequest) -> JsonResponse:
     try:
         data = loads(request.body)
         if User.objects.filter(username=data["username"]).count() > 0:
             raise Exception
-        User(username=data["username"], password=data["password"]).save()
-        return JsonResponse({"success": True})
+        user = User(username=data["username"], password=data["password"]).save()
+        return JsonResponse({"success": True, "token": user.token})
     except:
         return JsonResponse({"success": False, "reason": "user already taken"})
 
-def get_friends(_, user: str) -> JsonResponse:
+def get_friends(request) -> JsonResponse:
     try:
-        user = User.objects.get(username=user)
+        user = User.objects.get(username=request.user)
         friend_data = {}
         for i, friend in enumerate(user.friends.all()):
             friend_data[i] = friend.username

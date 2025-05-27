@@ -19,7 +19,7 @@ def add_route(request: WSGIRequest) -> JsonResponse:
         junction_name=get_junction_name(GeoPoint(data["lat"], data["long"]))
     )
     route.save()
-    UserOnRoute(user=User.objects.get(username=route.user), route=route).save()
+    UserOnRoute(user = request.user, route=route).save()
     for i in data["friends"].values():
         UserOnRoute(user=User.objects.get(username=i), route=route).save()
     return JsonResponse({"success": True})
