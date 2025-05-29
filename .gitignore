@@ -2,5 +2,10 @@
 mysite/__pycache__
 dbAPI/__pycache__
 dbAPI/migrations
+dbAPI/graph_logic/__pycache__
+dbAPI/views/__pycache__
 cache/
 .vscode
+venv/
+.DJANGO_SECRET_KEY
+config/gunicorn/__pycache__
