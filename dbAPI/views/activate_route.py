@@ -1,7 +1,7 @@
 import time
+from typing import Any
 
 from django.db.models import Exists, Subquery
-from django.http import JsonResponse
 
 
 from django.conf import settings
@@ -12,7 +12,7 @@ from dbAPI.graph_logic.utils import cleanup_path, get_total_dist, latlong, get_i
 from dbAPI.models import Route, User, Path, UserOnRoute, Waypoint, PathNode, Location_data, Notification
 
 
-def activate_route(data: dict, user: User, path_db: Path|None = None) -> JsonResponse:
+def activate_route(data: dict, user: User, path_db: Path|None = None) -> dict[str, Any]:
     start_coord = GeoPoint(data["position"]["lat"], data["position"]["long"])
     based_on_route = Route.objects.get(routeName=data["route"])
     other_paths = (Path.objects.filter(related_route=based_on_route).exclude(account=user)
@@ -176,8 +176,8 @@ def activate_route(data: dict, user: User, path_db: Path|None = None) -> JsonRes
     data = {}
     for idx, point in enumerate(main_path_geometry):
         data[idx] = {"lat": point.lat, "long": point.long}
-    return JsonResponse({"geometry": data,
-                         "dist": get_total_dist(path_db),
-                         "other_paths": get_other_geometry(path_db),
-                         "waypoints": latlong([settings.G.graph[i].position for i in waypoints.keys()]),
-                         "itineraries": get_itineraries(based_on_route)})
+    return {"geometry": data,
+            "dist": get_total_dist(path_db),
+            "other_paths": get_other_geometry(path_db),
+            "waypoints": latlong([settings.G.graph[i].position for i in waypoints.keys()]),
+            "itineraries": get_itineraries(based_on_route)}

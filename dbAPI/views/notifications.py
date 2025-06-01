@@ -8,15 +8,24 @@ from dbAPI.models import Notification, UserOnRoute, User
 
 
 def show_notification(request: WSGIRequest) -> JsonResponse:
-    notifications = Notification.objects.filter(user=request.user).order_by("datetime")
+    data = show_notifications_data(request.user)
+    return JsonResponse({"success": True, "notifications": data})
+
+
+def show_notifications_data(user):
+    notifications = Notification.objects.filter(user=user).order_by("datetime")
     data = {}
     for i in notifications:
         data[i.datetime] = i.notification
-    Notification.objects.filter(user=request.user).all().delete()
-    return JsonResponse({"success": True, "notifications": data})
+    Notification.objects.filter(user=user).all().delete()
+    return data
+
 
 def notify_others(request: WSGIRequest) -> JsonResponse:
-    data = loads(request.body)
-    for i in UserOnRoute.objects.filter(route__routeName=data["route"]).exclude(user__username=request.user):
-        Notification(user=request.user.username, notification=data["data"], datetime=int(time.time())).save()
+    notify_others_data(loads(request.body), request.user)
     return JsonResponse({"success": True})
+
+
+def notify_others_data(data, user):
+    for i in UserOnRoute.objects.filter(route__routeName=data["route"]).exclude(user__username=user):
+        Notification(user=i.username, notification=data["data"], datetime=int(time.time())).save()

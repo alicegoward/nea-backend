@@ -4,7 +4,6 @@ import osmnx
 from dbAPI.graph_logic.graph import Graph
 from dbAPI.graph_logic.nodes import GeoPoint, Edge
 
-
 class dbAPIConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'dbAPI'

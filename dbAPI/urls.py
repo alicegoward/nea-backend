@@ -7,9 +7,8 @@ urlpatterns = [
 
     path("route/create", add_route.add_route, name = "add_route"),
     path("route/update", update_route_data.update_route, name ="update route"),
-    path("get_route", update_route_data.getRoutes, name="get_route"),
+    path("get_route", update_route_data.get_routes, name="get_route"),
     path("route/deactivate", update_route_data.deactivate, name="deactivate"),
-    path("route/sample", routing.sampleRoute, name = "sample_route"),
     path("route/get_individual_config", update_route_data.get_individual_config, name = "get_individual_config"),
     path("route/set_individual_config", update_route_data.set_individual_config, name="set_individual_config"),
     path("route/notify_others", notifications.notify_others, name="notify_others"),

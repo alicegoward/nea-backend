@@ -1,6 +1,7 @@
 import time
 from datetime import timedelta
 from json import loads
+from typing import Any
 
 from django.conf import settings
 from django.core.handlers.wsgi import WSGIRequest
@@ -13,24 +14,21 @@ from dbAPI.graph_logic.utils import get_total_time, latlong, get_total_dist, get
 from dbAPI.models import Path, PathNode, UserOnRoute, Notification, Waypoint
 from dbAPI.views.activate_route import activate_route
 
-
-def sampleRoute(request: WSGIRequest) -> JsonResponse:
-    return activate_route(loads(request.body), request.user)
-
 def location_update(request: WSGIRequest) -> JsonResponse:
-    data = loads(request.body)
-    path = Path.objects.select_related('current_location').filter(account__username=request.user).first()
+    return JsonResponse(location_update_data(loads(request.body), request.user))
+
+
+def location_update_data(data, user) -> dict[str, Any]:
+    path = Path.objects.select_related('current_location').filter(account__username=user).first()
     if path is None:
-        return JsonResponse({"geometry": {}, "dist": 0, "other_paths": {}, "waypoints": {}, "itineraries": {}})
+        return {"geometry": {}, "dist": 0, "other_paths": {}, "waypoints": {}, "itineraries": {}}
     path.current_location.datetime = data["datetime"]
     path.current_location.lat = data["position"]["lat"]
     path.current_location.long = data["position"]["long"]
     path.current_location.save()
-
     data["route"] = path.related_route.routeName
-
-    if path.start_node is None: return JsonResponse(
-        {"geometry": {}, "dist": 0, "other_paths": {}, "waypoints": {}, "itineraries": {}})
+    if path.start_node is None:
+        return {"geometry": {}, "dist": 0, "other_paths": {}, "waypoints": {}, "itineraries": {}}
     previous_node = path.start_node
     current_node = previous_node.child_node
     geometry_path = [settings.G.graph[current_node.node_id].position]
@@ -51,7 +49,7 @@ def location_update(request: WSGIRequest) -> JsonResponse:
                                                                                path.current_location.long))
         if closest_lines_to_node[previous_node.node_id] > UserOnRoute.objects.get(user=path.account,
                                                                                   route=path.related_route).reroute_tolerance_m:
-            Notification(notification="gone off course (distance)", user=request.user, datetime=int(time.time())).save()
+            Notification(notification="gone off course (distance)", user=user, datetime=int(time.time())).save()
             return activate_route(data, path)
 
         while next_node is not None:
@@ -67,18 +65,15 @@ def location_update(request: WSGIRequest) -> JsonResponse:
         path.start_node.node_id].position.lat) ** 2 +
                               (path.current_location.long - settings.G.graph[
                                   path.start_node.node_id].position.long) ** 2) ** (1 / 2)
-
     if abs((now() - path.eta + timedelta(
             seconds=get_total_time(path))).total_seconds()) > UserOnRoute.objects.get(user=path.account,
-                                                                                             route=path.related_route).auto_notify_late:
-        Notification(notification="gone off course (time)", user=request.user, datetime=int(time.time())).save()
+                                                                                      route=path.related_route).auto_notify_late:
+        Notification(notification="gone off course (time)", user=user, datetime=int(time.time())).save()
         return activate_route(data, path)
-
     path.save()
-
     waypoint_nodes = [PathNode.objects.filter(waypoint=i).all().first() for i in Waypoint.objects.all()]
-    return JsonResponse({"geometry": latlong(geometry_path),
-                         "dist": get_total_dist(path),
-                         "other_paths": get_other_geometry(path),
-                         "waypoints": latlong([settings.G.graph[i.node_id].position for i in waypoint_nodes if i is not None]),
-                         "itineraries": get_itineraries(path.related_route)})
+    return {"geometry": latlong(geometry_path),
+            "dist": get_total_dist(path),
+            "other_paths": get_other_geometry(path),
+            "waypoints": latlong([settings.G.graph[i.node_id].position for i in waypoint_nodes if i is not None]),
+            "itineraries": get_itineraries(path.related_route)}

@@ -9,7 +9,11 @@ from dbAPI.models import Route, UserOnRoute, User
 
 
 def add_route(request: WSGIRequest) -> JsonResponse:
-    data = loads(request.body)
+    add_route_data(loads(request.body), request.user)
+    return JsonResponse({"success": True})
+
+
+def add_route_data(data, user):
     route = Route(
         user=data["username"],
         end_lat=data["lat"],
@@ -19,7 +23,6 @@ def add_route(request: WSGIRequest) -> JsonResponse:
         junction_name=get_junction_name(GeoPoint(data["lat"], data["long"]))
     )
     route.save()
-    UserOnRoute(user = request.user, route=route).save()
+    UserOnRoute(user=user, route=route).save()
     for i in data["friends"].values():
         UserOnRoute(user=User.objects.get(username=i), route=route).save()
-    return JsonResponse({"success": True})

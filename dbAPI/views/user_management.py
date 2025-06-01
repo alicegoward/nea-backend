@@ -10,23 +10,30 @@ from dbAPI.models import User, Notification
 
 def add_friend(request: WSGIRequest) -> JsonResponse:
     try:
-        data = loads(request.body)
-        requesting = User.objects.get(username=data["userRequesting"])
-        requested = User.objects.get(username=data["userRequested"])
-        requested.pending_friends.add(requesting)
-        Notification(
-            user=requested.username,
-            notification=f"{requesting} has requested to add you as a friend.",
-            datetime=int(time.time())
-        ).save()
-        requesting.save()
+        add_friend_data(loads(request.body))
         return JsonResponse({"success": True, "reason": "user successfully added"})
     except:
         return JsonResponse({"success": False, "reason": "user does not exist"})
 
 
+def add_friend_data(data):
+    requesting = User.objects.get(username=data["userRequesting"])
+    requested = User.objects.get(username=data["userRequested"])
+    requested.pending_friends.add(requesting)
+    Notification(
+        user=requested.username,
+        notification=f"{requesting} has requested to add you as a friend.",
+        datetime=int(time.time())
+    ).save()
+    requesting.save()
+
+
 def update_friend_state(request: WSGIRequest) -> JsonResponse:
-    data = loads(request.body)
+    update_friend_state_data(loads(request.body))
+    return JsonResponse({"success": True})
+
+
+def update_friend_state_data(data):
     accepting = User.objects.get(username=data["userAccepting"])
     accepted = User.objects.get(username=data["userAccepted"])
     accepting.pending_friends.remove(accepted)
@@ -39,43 +46,55 @@ def update_friend_state(request: WSGIRequest) -> JsonResponse:
         ).save()
     accepting.save()
 
+
 def login(request: WSGIRequest) -> JsonResponse:
     try:
-        data = loads(request.body)
-        user = User.objects.get(username=data["username"], password=data["password"])
-        token = get_random_string(16)
-        print("TOKEN", token)
-        user.token = token
-        user.save()
+        token = login_data(request.body)
         return JsonResponse({"success": True, "token": token})
     except Exception as e:
-        print(e)
         return JsonResponse({"success": False, "reason": "username / password combination does not exist"})
+
+
+def login_data(data):
+    user = User.objects.get(username=data["username"], password=data["password"])
+    token = get_random_string(16)
+    print("TOKEN", token)
+    user.token = token
+    user.save()
+    return token
 
 
 def register(request: WSGIRequest) -> JsonResponse:
     try:
-        data = loads(request.body)
-        if User.objects.filter(username=data["username"]).count() > 0:
-            raise Exception
-        user = User(username=data["username"], password=data["password"]).save()
+        user = register_data(loads(request.body))
         return JsonResponse({"success": True, "token": user.token})
     except:
         return JsonResponse({"success": False, "reason": "user already taken"})
 
+
+def register_data(data):
+    if User.objects.filter(username=data["username"]).count() > 0:
+        raise Exception
+    user = User(username=data["username"], password=data["password"]).save()
+    return user
+
+
 def get_friends(request) -> JsonResponse:
     try:
-        user = User.objects.get(username=request.user)
-        friend_data = {}
-        for i, friend in enumerate(user.friends.all()):
-            friend_data[i] = friend.username
-        incoming_data = {}
-        for i, friend in enumerate(user.pending_friends.all()):
-            incoming_data[i] = friend.username
-        outgoing_data = {}
-        for i, friend in enumerate(User.objects.filter(pending_friends=user)):
-            outgoing_data[i] = friend.username
-        return JsonResponse(
-            {"success": True, "names": friend_data, "incoming": incoming_data, "outgoing": outgoing_data})
+        return JsonResponse(get_friends_data(request.user))
     except Exception as e:
         return JsonResponse({"success": False, "reason": str(e)})
+
+
+def get_friends_data(username):
+    user = User.objects.get(username=username)
+    friend_data = {}
+    for i, friend in enumerate(user.friends.all()):
+        friend_data[i] = friend.username
+    incoming_data = {}
+    for i, friend in enumerate(user.pending_friends.all()):
+        incoming_data[i] = friend.username
+    outgoing_data = {}
+    for i, friend in enumerate(User.objects.filter(pending_friends=user)):
+        outgoing_data[i] = friend.username
+    return {"success": True, "names": friend_data, "incoming": incoming_data, "outgoing": outgoing_data}

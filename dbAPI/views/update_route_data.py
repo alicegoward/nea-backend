@@ -11,6 +11,11 @@ from dbAPI.models import Route, UserOnRoute, User, Waypoint, PathNode, Path
 
 def update_route(request: WSGIRequest) -> JsonResponse:
     data = loads(request.body)
+    update_route_data(data)
+    return JsonResponse({"success": True})
+
+
+def update_route_data(data):
     route = Route.objects.get(routeName=data["route"])
     if "time" in data:
         route.end_time = int(data["time"])
@@ -23,22 +28,30 @@ def update_route(request: WSGIRequest) -> JsonResponse:
         for i in data.items():
             if i[0] != "route":
                 UserOnRoute(route=route, user=User.objects.get(username=i[1])).save()
-    return JsonResponse({"success": True})
+
 
 def get_individual_config(request: WSGIRequest) -> JsonResponse:
-    data = loads(request.body)
+    data = get_individual_config_data(loads(request.body), request.user)
+    return JsonResponse(data)
+
+
+def get_individual_config_data(data, user):
     user_on_route = UserOnRoute.objects.get(
-        Q(user=request.user) &
+        Q(user=user) &
         Q(route=Route.objects.get(routeName=data["route"])))
     data["create_mor"] = user_on_route.create_mor
     data["mor_tolerance_s"] = user_on_route.mor_tolerance_s
     data["reroute_tolerance_m"] = user_on_route.reroute_tolerance_m
     data["auto_notify_late"] = user_on_route.auto_notify_late
-    return JsonResponse(data)
+    return data
 
 
 def set_individual_config(request: WSGIRequest) -> JsonResponse:
-    data = loads(request.body)
+    set_individual_config_data(loads(request.body), request.user)
+    return JsonResponse({"success": True})
+
+
+def set_individual_config_data(data, user):
     user_on_route = UserOnRoute.objects.get(
         Q(user=request.user) &
         Q(route=Route.objects.get(routeName=data["route"])))
@@ -47,10 +60,15 @@ def set_individual_config(request: WSGIRequest) -> JsonResponse:
     user_on_route.reroute_tolerance_m = data["reroute_tolerance_m"]
     user_on_route.auto_notify_late = data["auto_notify_late"]
     user_on_route.save()
-    return JsonResponse({"success": True})
 
-def getRoutes(request) -> JsonResponse:
-    routes = Route.objects.filter(Q(useronroute__user=request.user))
+
+def get_routes(request) -> JsonResponse:
+    data = get_routes_data(request.user)
+    return JsonResponse(data)
+
+
+def get_routes_data(user):
+    routes = Route.objects.filter(Q(useronroute__user=user))
     data = {"success": True, "data": {}}
     for i, route in enumerate(routes):
         route_data = {
@@ -62,17 +80,22 @@ def getRoutes(request) -> JsonResponse:
             "junction_name": route.junction_name,
             "friends": {}
         }
-        for j, friend in enumerate(User.objects.filter(useronroute__route=route).exclude(user = route.user)):
+        for j, friend in enumerate(User.objects.filter(useronroute__route=route).exclude(user=route.user)):
             route_data["friends"][j] = friend.username
         data["data"][i] = route_data
-    return JsonResponse(data)
+    return data
 
 
 def deactivate(request) -> JsonResponse:
-    Path.objects.filter(account=User.objects.get(username=request.user)).delete()
+    user = request.user
+    deactivate_data(user)
+    return JsonResponse({'success': True})
+
+
+def deactivate_data(user):
+    Path.objects.filter(account=User.objects.get(username=user)).delete()
     waypoints = dict()
     for i in Waypoint.objects.all():
         node = PathNode.objects.filter(waypoint=i).all().first()
         if node is not None: waypoints[node.node_id] = i
     fix_waypoints(waypoints)
-    return JsonResponse({'success': True})
