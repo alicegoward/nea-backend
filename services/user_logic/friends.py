@@ -1,9 +1,10 @@
 import time
+from typing import Any
 
 from api.models import Notification, User
 
 
-def add_friend_data(data):
+def add_friend_data(data: dict[str, str]) -> None:
     requesting = User.objects.get(username=data["userRequesting"])
     requested = User.objects.get(username=data["userRequested"])
     requested.pending_friends.add(requesting)
@@ -15,7 +16,7 @@ def add_friend_data(data):
     requesting.save()
 
 
-def update_friend_state_data(data):
+def update_friend_state_data(data: dict[str, str]) -> None:
     accepting = User.objects.get(username=data["userAccepting"])
     accepted = User.objects.get(username=data["userAccepted"])
     accepting.pending_friends.remove(accepted)
@@ -29,7 +30,7 @@ def update_friend_state_data(data):
     accepting.save()
 
 
-def get_friends_data(username):
+def get_friends_data(username: str) -> dict[str, dict[Any, Any]]:
     user = User.objects.get(username=username)
     friend_data = {}
     for i, friend in enumerate(user.friends.all()):
@@ -40,4 +41,4 @@ def get_friends_data(username):
     outgoing_data = {}
     for i, friend in enumerate(User.objects.filter(pending_friends=user)):
         outgoing_data[i] = friend.username
-    return {"success": True, "names": friend_data, "incoming": incoming_data, "outgoing": outgoing_data}
+    return {"names": friend_data, "incoming": incoming_data, "outgoing": outgoing_data}

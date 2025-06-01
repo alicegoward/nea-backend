@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.db.models import Q
 
 from api.models import Route, UserOnRoute, User, Path, Waypoint, PathNode
@@ -5,7 +7,7 @@ from services.graph_logic.nodes import GeoPoint
 from services.graph_logic.utils import get_junction_name, fix_waypoints
 
 
-def update_route_data(data):
+def update_route_data(data: dict[str, Any]) -> None:
     route = Route.objects.get(routeName=data["route"])
     if "time" in data:
         route.end_time = int(data["time"])
@@ -20,7 +22,7 @@ def update_route_data(data):
                 UserOnRoute(route=route, user=User.objects.get(username=i[1])).save()
 
 
-def get_individual_config_data(data, user):
+def get_individual_config_data(data: dict[str, Any], user: str) -> dict[str, Any]:
     user_on_route = UserOnRoute.objects.get(
         Q(user=user) &
         Q(route=Route.objects.get(routeName=data["route"])))
@@ -31,7 +33,7 @@ def get_individual_config_data(data, user):
     return data
 
 
-def set_individual_config_data(data, user):
+def set_individual_config_data(data: dict[str, Any], user: str) -> None:
     user_on_route = UserOnRoute.objects.get(
         Q(user=user) &
         Q(route=Route.objects.get(routeName=data["route"])))
@@ -42,9 +44,9 @@ def set_individual_config_data(data, user):
     user_on_route.save()
 
 
-def get_routes_data(user):
+def get_routes_data(user: str) -> dict[str, bool | dict[Any, Any]]:
     routes = Route.objects.filter(Q(useronroute__user=user))
-    data = {"success": True, "data": {}}
+    data = {"data": {}}
     for i, route in enumerate(routes):
         route_data = {
             "username": route.user,
@@ -61,7 +63,7 @@ def get_routes_data(user):
     return data
 
 
-def deactivate_data(user):
+def deactivate_data(user: str) -> None:
     Path.objects.filter(account=User.objects.get(username=user)).delete()
     waypoints = dict()
     for i in Waypoint.objects.all():

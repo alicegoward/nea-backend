@@ -75,7 +75,7 @@ def cleanup_path(path_db: Path):
     fix_waypoints(waypoints)
 
 
-def fix_waypoints(waypoints):
+def fix_waypoints(waypoints: dict[int, Waypoint]) -> None:
     for waypoint in waypoints.values():
         nodes_at_waypoint = PathNode.objects.filter(waypoint=waypoint).all()
         if len(nodes_at_waypoint) < 2:

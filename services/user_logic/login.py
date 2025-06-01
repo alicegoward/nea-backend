@@ -1,9 +1,11 @@
+from typing import Any
+
 from django.utils.crypto import get_random_string
 
 from api.models import User
 
 
-def login_data(data):
+def login_data(data: dict[str, str]) -> str:
     user = User.objects.get(username=data["username"], password=data["password"])
     token = get_random_string(16)
     print("TOKEN", token)
@@ -12,8 +14,8 @@ def login_data(data):
     return token
 
 
-def register_data(data):
+def register_data(data: dict[str, str]) -> str:
     if User.objects.filter(username=data["username"]).count() > 0:
         raise Exception
     user = User(username=data["username"], password=data["password"]).save()
-    return user
+    return user.token

@@ -9,7 +9,7 @@ from django.conf import settings
 from services.graph_logic.nodes import GeoPoint, NodeWithOffset
 from services.graph_logic.route_geometry import get_other_geometry, route_from_nodes
 from services.graph_logic.utils import cleanup_path, get_total_dist, latlong, get_itineraries, fix_waypoints
-from api.models import Route, User, Path, UserOnRoute, Waypoint, PathNode, Location_data, Notification
+from api.models import Route, User, Path, UserOnRoute, Waypoint, PathNode, LocationData, Notification
 
 
 def activate_route(data: dict, user: User, path_db: Path|None = None) -> dict[str, Any]:
@@ -137,8 +137,8 @@ def activate_route(data: dict, user: User, path_db: Path|None = None) -> dict[st
             new_waypoint = waypoints[meeting_node]
             new_waypoint.save()
 
-    path_db.current_location = Location_data(datetime=data["datetime"], lat=data["position"]["lat"],
-                                             long=data["position"]["long"])
+    path_db.current_location = LocationData(datetime=data["datetime"], lat=data["position"]["lat"],
+                                            long=data["position"]["long"])
     path_db.current_location.save()
 
     if meeting_node is not None:

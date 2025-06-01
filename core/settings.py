@@ -31,7 +31,7 @@ ALLOWED_HOSTS = ['192.168.137.1','127.0.0.1','nea.uksouth.cloudapp.azure.com']
 # Application definition
 
 INSTALLED_APPS = [
-    "api.apps.dbAPIConfig",
+    "api.apps.APIConfig",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -47,7 +47,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'api.middleware.TokenAuth'
+    'core.middleware.TokenAuth'
 ]
 
 ROOT_URLCONF = 'core.urls'

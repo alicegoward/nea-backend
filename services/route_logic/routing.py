@@ -72,7 +72,7 @@ def location_update_data(data, user) -> dict[str, Any]:
             "waypoints": latlong([settings.G.graph[i.node_id].position for i in waypoint_nodes if i is not None]),
             "itineraries": get_itineraries(path.related_route)}
 
-def add_route_data(data, user):
+def add_route_data(data: dict[str, int|str], user: str) -> None:
     route = Route(
         user=data["username"],
         end_lat=data["lat"],
