@@ -2,8 +2,8 @@ import time
 
 from django.conf import settings
 
-from dbAPI.graph_logic.nodes import GeoPoint
-from dbAPI.models import Route, Path, PathNode, Notification, Waypoint
+from services.graph_logic.nodes import GeoPoint
+from api.models import Route, Path, PathNode, Notification, Waypoint
 
 
 def get_itineraries(route: Route) -> dict[int, dict]:

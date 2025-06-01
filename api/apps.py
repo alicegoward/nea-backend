@@ -1,12 +1,12 @@
 from django.apps import AppConfig
 import osmnx
 
-from dbAPI.graph_logic.graph import Graph
-from dbAPI.graph_logic.nodes import GeoPoint, Edge
+from services.graph_logic.graph import Graph
+from services.graph_logic.nodes import GeoPoint, Edge
 
 class dbAPIConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'dbAPI'
+    name = 'api'
 
     def ready(self):
         from django.conf import settings

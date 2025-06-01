@@ -6,10 +6,10 @@ from django.db.models import Exists, Subquery
 
 from django.conf import settings
 
-from dbAPI.graph_logic.nodes import GeoPoint, NodeWithOffset
-from dbAPI.graph_logic.route_geometry import get_other_geometry, route_from_nodes
-from dbAPI.graph_logic.utils import cleanup_path, get_total_dist, latlong, get_itineraries, fix_waypoints
-from dbAPI.models import Route, User, Path, UserOnRoute, Waypoint, PathNode, Location_data, Notification
+from services.graph_logic.nodes import GeoPoint, NodeWithOffset
+from services.graph_logic.route_geometry import get_other_geometry, route_from_nodes
+from services.graph_logic.utils import cleanup_path, get_total_dist, latlong, get_itineraries, fix_waypoints
+from api.models import Route, User, Path, UserOnRoute, Waypoint, PathNode, Location_data, Notification
 
 
 def activate_route(data: dict, user: User, path_db: Path|None = None) -> dict[str, Any]:

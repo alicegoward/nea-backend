@@ -1,21 +1,15 @@
 import time
 from datetime import timedelta
-from json import loads
 from typing import Any
 
 from django.conf import settings
-from django.core.handlers.wsgi import WSGIRequest
-from django.http import JsonResponse
 from django.utils.timezone import now
 
-from dbAPI.graph_logic.nodes import GeoPoint
-from dbAPI.graph_logic.route_geometry import get_other_geometry
-from dbAPI.graph_logic.utils import get_total_time, latlong, get_total_dist, get_itineraries
-from dbAPI.models import Path, PathNode, UserOnRoute, Notification, Waypoint
-from dbAPI.views.activate_route import activate_route
-
-def location_update(request: WSGIRequest) -> JsonResponse:
-    return JsonResponse(location_update_data(loads(request.body), request.user))
+from api.models import Path, UserOnRoute, Notification, Waypoint, PathNode, Route, User
+from services.graph_logic.nodes import GeoPoint
+from services.graph_logic.route_geometry import get_other_geometry
+from services.graph_logic.utils import get_total_time, latlong, get_total_dist, get_itineraries, get_junction_name
+from services.route_logic.activate_route import activate_route
 
 
 def location_update_data(data, user) -> dict[str, Any]:
@@ -77,3 +71,17 @@ def location_update_data(data, user) -> dict[str, Any]:
             "other_paths": get_other_geometry(path),
             "waypoints": latlong([settings.G.graph[i.node_id].position for i in waypoint_nodes if i is not None]),
             "itineraries": get_itineraries(path.related_route)}
+
+def add_route_data(data, user):
+    route = Route(
+        user=data["username"],
+        end_lat=data["lat"],
+        end_long=data["long"],
+        end_time=data["endTime"],
+        routeName=data["name"],
+        junction_name=get_junction_name(GeoPoint(data["lat"], data["long"]))
+    )
+    route.save()
+    UserOnRoute(user=user, route=route).save()
+    for i in data["friends"].values():
+        UserOnRoute(user=User.objects.get(username=i), route=route).save()

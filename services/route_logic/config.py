@@ -1,18 +1,8 @@
-from json import loads
-
-from django.core.handlers.wsgi import WSGIRequest
 from django.db.models import Q
-from django.http import JsonResponse
 
-from dbAPI.graph_logic.nodes import GeoPoint
-from dbAPI.graph_logic.utils import get_junction_name, fix_waypoints
-from dbAPI.models import Route, UserOnRoute, User, Waypoint, PathNode, Path
-
-
-def update_route(request: WSGIRequest) -> JsonResponse:
-    data = loads(request.body)
-    update_route_data(data)
-    return JsonResponse({"success": True})
+from api.models import Route, UserOnRoute, User, Path, Waypoint, PathNode
+from services.graph_logic.nodes import GeoPoint
+from services.graph_logic.utils import get_junction_name, fix_waypoints
 
 
 def update_route_data(data):
@@ -30,11 +20,6 @@ def update_route_data(data):
                 UserOnRoute(route=route, user=User.objects.get(username=i[1])).save()
 
 
-def get_individual_config(request: WSGIRequest) -> JsonResponse:
-    data = get_individual_config_data(loads(request.body), request.user)
-    return JsonResponse(data)
-
-
 def get_individual_config_data(data, user):
     user_on_route = UserOnRoute.objects.get(
         Q(user=user) &
@@ -46,25 +31,15 @@ def get_individual_config_data(data, user):
     return data
 
 
-def set_individual_config(request: WSGIRequest) -> JsonResponse:
-    set_individual_config_data(loads(request.body), request.user)
-    return JsonResponse({"success": True})
-
-
 def set_individual_config_data(data, user):
     user_on_route = UserOnRoute.objects.get(
-        Q(user=request.user) &
+        Q(user=user) &
         Q(route=Route.objects.get(routeName=data["route"])))
     user_on_route.create_mor = data["create_mor"]
     user_on_route.mor_tolerance_s = data["mor_tolerance_s"]
     user_on_route.reroute_tolerance_m = data["reroute_tolerance_m"]
     user_on_route.auto_notify_late = data["auto_notify_late"]
     user_on_route.save()
-
-
-def get_routes(request) -> JsonResponse:
-    data = get_routes_data(request.user)
-    return JsonResponse(data)
 
 
 def get_routes_data(user):
@@ -84,12 +59,6 @@ def get_routes_data(user):
             route_data["friends"][j] = friend.username
         data["data"][i] = route_data
     return data
-
-
-def deactivate(request) -> JsonResponse:
-    user = request.user
-    deactivate_data(user)
-    return JsonResponse({'success': True})
 
 
 def deactivate_data(user):

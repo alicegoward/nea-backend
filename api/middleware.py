@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 
-from dbAPI.models import User
+from api.models import User
 
 
 class TokenAuth:
