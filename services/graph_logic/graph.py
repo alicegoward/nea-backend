@@ -1,7 +1,7 @@
 import heapq
 import math
 
-from dbAPI.graph_logic.nodes import Node, GeoPoint, Edge, DijkstraNode
+from services.graph_logic.nodes import Node, GeoPoint, Edge, DijkstraNode
 
 
 class Graph:

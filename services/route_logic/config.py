@@ -1,16 +1,13 @@
-from json import loads
+from typing import Any
 
-from django.core.handlers.wsgi import WSGIRequest
 from django.db.models import Q
-from django.http import JsonResponse
 
-from dbAPI.graph_logic.nodes import GeoPoint
-from dbAPI.graph_logic.utils import get_junction_name, fix_waypoints
-from dbAPI.models import Route, UserOnRoute, User, Waypoint, PathNode, Path
+from api.models import Route, UserOnRoute, User, Path, Waypoint, PathNode
+from services.graph_logic.nodes import GeoPoint
+from services.graph_logic.utils import get_junction_name, fix_waypoints
 
 
-def update_route(request: WSGIRequest) -> JsonResponse:
-    data = loads(request.body)
+def update_route_data(data: dict[str, Any]) -> None:
     route = Route.objects.get(routeName=data["route"])
     if "time" in data:
         route.end_time = int(data["time"])
@@ -23,35 +20,33 @@ def update_route(request: WSGIRequest) -> JsonResponse:
         for i in data.items():
             if i[0] != "route":
                 UserOnRoute(route=route, user=User.objects.get(username=i[1])).save()
-    return JsonResponse({"success": True})
 
-def get_individual_config(request: WSGIRequest) -> JsonResponse:
-    data = loads(request.body)
+
+def get_individual_config_data(data: dict[str, Any], user: str) -> dict[str, Any]:
     user_on_route = UserOnRoute.objects.get(
-        Q(user=request.user) &
+        Q(user=user) &
         Q(route=Route.objects.get(routeName=data["route"])))
     data["create_mor"] = user_on_route.create_mor
     data["mor_tolerance_s"] = user_on_route.mor_tolerance_s
     data["reroute_tolerance_m"] = user_on_route.reroute_tolerance_m
     data["auto_notify_late"] = user_on_route.auto_notify_late
-    return JsonResponse(data)
+    return data
 
 
-def set_individual_config(request: WSGIRequest) -> JsonResponse:
-    data = loads(request.body)
+def set_individual_config_data(data: dict[str, Any], user: str) -> None:
     user_on_route = UserOnRoute.objects.get(
-        Q(user=request.user) &
+        Q(user=user) &
         Q(route=Route.objects.get(routeName=data["route"])))
     user_on_route.create_mor = data["create_mor"]
     user_on_route.mor_tolerance_s = data["mor_tolerance_s"]
     user_on_route.reroute_tolerance_m = data["reroute_tolerance_m"]
     user_on_route.auto_notify_late = data["auto_notify_late"]
     user_on_route.save()
-    return JsonResponse({"success": True})
 
-def getRoutes(request) -> JsonResponse:
-    routes = Route.objects.filter(Q(useronroute__user=request.user))
-    data = {"success": True, "data": {}}
+
+def get_routes_data(user: str) -> dict[str, bool | dict[Any, Any]]:
+    routes = Route.objects.filter(Q(useronroute__user=user))
+    data = {"data": {}}
     for i, route in enumerate(routes):
         route_data = {
             "username": route.user,
@@ -62,17 +57,16 @@ def getRoutes(request) -> JsonResponse:
             "junction_name": route.junction_name,
             "friends": {}
         }
-        for j, friend in enumerate(User.objects.filter(useronroute__route=route).exclude(user = route.user)):
+        for j, friend in enumerate(User.objects.filter(useronroute__route=route).exclude(user=route.user)):
             route_data["friends"][j] = friend.username
         data["data"][i] = route_data
-    return JsonResponse(data)
+    return data
 
 
-def deactivate(request) -> JsonResponse:
-    Path.objects.filter(account=User.objects.get(username=request.user)).delete()
+def deactivate_data(user: str) -> None:
+    Path.objects.filter(account=User.objects.get(username=user)).delete()
     waypoints = dict()
     for i in Waypoint.objects.all():
         node = PathNode.objects.filter(waypoint=i).all().first()
         if node is not None: waypoints[node.node_id] = i
     fix_waypoints(waypoints)
-    return JsonResponse({'success': True})

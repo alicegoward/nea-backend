@@ -1,15 +1,14 @@
 from django.apps import AppConfig
 import osmnx
 
-from dbAPI.graph_logic.graph import Graph
-from dbAPI.graph_logic.nodes import GeoPoint, Edge
+from services.graph_logic.graph import Graph
+from services.graph_logic.nodes import GeoPoint, Edge
 
-
-class dbAPIConfig(AppConfig):
+class APIConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'dbAPI'
+    name = 'api'
 
-    def ready(self):
+    def ready(self) -> None:
         from django.conf import settings
         print("here")
         raw_map = osmnx.graph.graph_from_bbox((-0.24689,51.50247,-0.18595,51.48607), network_type="walk", simplify=True)

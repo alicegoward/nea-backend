@@ -1,13 +1,16 @@
+from typing import Any, Callable
+
+from django.core.handlers.wsgi import WSGIRequest
 from django.http import JsonResponse
 
-from dbAPI.models import User
+from api.models import User
 
 
 class TokenAuth:
-    def __init__(self, get_response):
+    def __init__(self, get_response: Callable) -> None:
         self.get_response = get_response
         self.exempt_paths = ['/db/user/login', '/db/user/register', '/admin']
-    def __call__(self, request):
+    def __call__(self, request: WSGIRequest) -> JsonResponse | Any:
         try:
             if any(request.path.lower().startswith(i) for i in self.exempt_paths):
                 return self.get_response(request)

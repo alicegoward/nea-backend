@@ -1,9 +1,9 @@
 .pycache
-mysite/__pycache__
-dbAPI/__pycache__
-dbAPI/migrations
-dbAPI/graph_logic/__pycache__
-dbAPI/views/__pycache__
+core/__pycache__
+api/__pycache__
+api/migrations
+services/graph_logic/__pycache__
+api/views/__pycache__
 cache/
 .vscode
 venv/

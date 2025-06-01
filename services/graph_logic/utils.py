@@ -2,8 +2,8 @@ import time
 
 from django.conf import settings
 
-from dbAPI.graph_logic.nodes import GeoPoint
-from dbAPI.models import Route, Path, PathNode, Notification, Waypoint
+from services.graph_logic.nodes import GeoPoint
+from api.models import Route, Path, PathNode, Notification, Waypoint
 
 
 def get_itineraries(route: Route) -> dict[int, dict]:
@@ -75,7 +75,7 @@ def cleanup_path(path_db: Path):
     fix_waypoints(waypoints)
 
 
-def fix_waypoints(waypoints):
+def fix_waypoints(waypoints: dict[int, Waypoint]) -> None:
     for waypoint in waypoints.values():
         nodes_at_waypoint = PathNode.objects.filter(waypoint=waypoint).all()
         if len(nodes_at_waypoint) < 2:
