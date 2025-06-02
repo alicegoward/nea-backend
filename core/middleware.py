@@ -9,7 +9,7 @@ from api.models import User
 class TokenAuth:
     def __init__(self, get_response: Callable) -> None:
         self.get_response = get_response
-        self.exempt_paths = ['/db/user/login', '/db/user/register', '/admin']
+        self.exempt_paths = ['/api/user/login', '/api/user/register', '/admin']
     def __call__(self, request: WSGIRequest) -> JsonResponse | Any:
         try:
             if any(request.path.lower().startswith(i) for i in self.exempt_paths):
