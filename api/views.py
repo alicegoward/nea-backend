@@ -35,6 +35,9 @@ def set_individual_config(request: WSGIRequest) -> JsonResponse:
 def get_routes(request) -> JsonResponse:
     return send_request(lambda: get_routes_data(request.user))
 
+def activate_route(request: WSGIRequest) -> JsonResponse:
+    return send_request(lambda: ActivateRoute(loads(request.body), request.user).get_result())
+
 def deactivate(request) -> JsonResponse:
     return send_request(lambda: deactivate_data(request.user))
 

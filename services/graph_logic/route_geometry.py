@@ -17,7 +17,7 @@ def get_other_geometry(path: Path) -> dict:
         current_node = previous_node.child_node
         next_node = current_node.child_node
         geometry_path = [settings.G.graph[current_node.node_id].position]
-        while next_node is not None:
+        while next_node is not None and current_node is not None:
             geometry = list(settings.G.graph[current_node.node_id].neighbours[next_node.node_id].geometry)
             if geometry[0] == geometry_path[-1]:
                 geometry_path += geometry

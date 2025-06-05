@@ -1,13 +1,14 @@
 import time
 
 from django.conf import settings
+from django.db.models import Q
 
 from services.graph_logic.nodes import GeoPoint
 from api.models import Route, Path, PathNode, Notification, Waypoint
 
 
 def get_itineraries(route: Route) -> dict[int, dict]:
-    paths = Path.objects.filter(related_route=route)
+    paths = Path.objects.filter(Q(related_route=route) & Q(start_node__isnull=False))
     out = dict()
     for path_idx, path in enumerate(paths):
         data = dict()

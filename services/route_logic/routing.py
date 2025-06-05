@@ -9,7 +9,7 @@ from api.models import Path, UserOnRoute, Notification, Waypoint, PathNode, Rout
 from services.graph_logic.nodes import GeoPoint
 from services.graph_logic.route_geometry import get_other_geometry
 from services.graph_logic.utils import get_total_time, latlong, get_total_dist, get_itineraries, get_junction_name
-from services.route_logic.activate_route import activate_route
+from services.route_logic.activate_route import ActivateRoute
 
 
 def location_update_data(data, user) -> dict[str, Any]:
@@ -44,7 +44,7 @@ def location_update_data(data, user) -> dict[str, Any]:
         if closest_lines_to_node[previous_node.node_id] > UserOnRoute.objects.get(user=path.account,
                                                                                   route=path.related_route).reroute_tolerance_m:
             Notification(notification="gone off course (distance)", user=user, datetime=int(time.time())).save()
-            return activate_route(data, path)
+            return ActivateRoute(data, user, path).get_result()
 
         while next_node is not None:
             geometry = list(settings.G.graph[current_node.node_id].neighbours[next_node.node_id].geometry)
@@ -63,7 +63,7 @@ def location_update_data(data, user) -> dict[str, Any]:
             seconds=get_total_time(path))).total_seconds()) > UserOnRoute.objects.get(user=path.account,
                                                                                       route=path.related_route).auto_notify_late:
         Notification(notification="gone off course (time)", user=user, datetime=int(time.time())).save()
-        return activate_route(data, path)
+        return ActivateRoute(data, user, path).get_result()
     path.save()
     waypoint_nodes = [PathNode.objects.filter(waypoint=i).all().first() for i in Waypoint.objects.all()]
     return {"geometry": latlong(geometry_path),
