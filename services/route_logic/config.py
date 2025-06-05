@@ -8,6 +8,10 @@ from services.graph_logic.utils import get_junction_name, fix_waypoints
 
 
 def update_route_data(data: dict[str, Any]) -> None:
+    """
+    :param data: New data about the route, affecting all participants. Only modifiable by the route admin.
+    :return:
+    """
     route = Route.objects.get(routeName=data["route"])
     if "time" in data:
         route.end_time = int(data["time"])
@@ -23,6 +27,11 @@ def update_route_data(data: dict[str, Any]) -> None:
 
 
 def get_individual_config_data(data: dict[str, Any], user: str) -> dict[str, Any]:
+    """
+    :param data: Route
+    :param user: User
+    :return: User's individual configuration data for the route
+    """
     user_on_route = UserOnRoute.objects.get(
         Q(user=user) &
         Q(route=Route.objects.get(routeName=data["route"])))
@@ -34,6 +43,10 @@ def get_individual_config_data(data: dict[str, Any], user: str) -> dict[str, Any
 
 
 def set_individual_config_data(data: dict[str, Any], user: str) -> None:
+    """
+    :param data: Updated individual configuration data
+    :param user: User
+    """
     user_on_route = UserOnRoute.objects.get(
         Q(user=user) &
         Q(route=Route.objects.get(routeName=data["route"])))
@@ -45,6 +58,10 @@ def set_individual_config_data(data: dict[str, Any], user: str) -> None:
 
 
 def get_routes_data(user: str) -> dict[str, bool | dict[Any, Any]]:
+    """
+    :param user: User
+    :return: Enumerated dictionary with data about each route
+    """
     routes = Route.objects.filter(Q(useronroute__user=user))
     data = {"data": {}}
     for i, route in enumerate(routes):
@@ -64,6 +81,10 @@ def get_routes_data(user: str) -> dict[str, bool | dict[Any, Any]]:
 
 
 def deactivate_data(user: str) -> None:
+    """
+    :param user: User to deactivate the current path of.
+    :return:
+    """
     Path.objects.filter(account=User.objects.get(username=user)).delete()
     waypoints = dict()
     for i in Waypoint.objects.all():

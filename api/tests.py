@@ -1,4 +1,5 @@
 from django.test import TestCase
+
 from api.models import User
 from services.user_logic.login import login_data, register_data
 
@@ -12,7 +13,8 @@ class LoginTestCase(TestCase):
         try:
             login_data({"username": "a", "password": "c"})
             raise Exception("test failed")
-        except: pass
+        except:
+            pass
 
     def test_login_success(self) -> None:
         """attempting to login with correct password"""
@@ -23,7 +25,8 @@ class LoginTestCase(TestCase):
         try:
             register_data({"username": "a", "password": "c"})
             raise Exception("test failed")
-        except: pass
+        except:
+            pass
 
     def test_register_success(self) -> None:
         """attempting to register with the unique username"""

@@ -12,7 +12,14 @@ from services.graph_logic.utils import get_total_time, latlong, get_total_dist, 
 from services.route_logic.activate_route import ActivateRoute
 
 
-def location_update_data(data, user) -> dict[str, Any]:
+def location_update_data(data: dict[str, Any], user: str) -> dict[str, Any]:
+    """
+    Updates the route by moving the user onto the next edge (possibly skipping some).
+    If they have gone off course in terms of time or distance, deletes the path and reactivates the route, notifying them.
+    :param data: New location data
+    :param user: User
+    :return: New information about the route
+    """
     path = Path.objects.select_related('current_location').filter(account__username=user).first()
     if path is None:
         return {"geometry": {}, "dist": 0, "other_paths": {}, "waypoints": {}, "itineraries": {}}
@@ -31,6 +38,7 @@ def location_update_data(data, user) -> dict[str, Any]:
         closest_lines_to_node = settings.G.dist_to_path_from_node(current_node.node_id,
                                                                   GeoPoint(path.current_location.lat,
                                                                            path.current_location.long))
+        # updates position along route by moving onto a later edge
         while closest_lines_to_node[next_node.node_id] < closest_lines_to_node[previous_node.node_id]:
             path.start_node = current_node
             previous_node.delete()
@@ -45,7 +53,7 @@ def location_update_data(data, user) -> dict[str, Any]:
                                                                                   route=path.related_route).reroute_tolerance_m:
             Notification(notification="gone off course (distance)", user=user, datetime=int(time.time())).save()
             return ActivateRoute(data, user, path).get_result()
-
+        # forms new geometry
         while next_node is not None:
             geometry = list(settings.G.graph[current_node.node_id].neighbours[next_node.node_id].geometry)
             if geometry[0] == geometry_path[-1]:
@@ -72,7 +80,12 @@ def location_update_data(data, user) -> dict[str, Any]:
             "waypoints": latlong([settings.G.graph[i.node_id].position for i in waypoint_nodes if i is not None]),
             "itineraries": get_itineraries(path.related_route)}
 
-def add_route_data(data: dict[str, int|str], user: str) -> None:
+
+def add_route_data(data: dict[str, int | str], user: str) -> None:
+    """
+    :param data: information about the route to create
+    :param user: user creating the route (who will be the route admin)
+    """
     route = Route(
         user=data["username"],
         end_lat=data["lat"],

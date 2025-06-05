@@ -3,17 +3,21 @@ import time
 from django.conf import settings
 from django.db.models import Q
 
-from services.graph_logic.nodes import GeoPoint
 from api.models import Route, Path, PathNode, Notification, Waypoint
+from services.graph_logic.nodes import GeoPoint
 
 
 def get_itineraries(route: Route) -> dict[int, dict]:
+    """
+    :param route: Database object of the relevant route
+    :return: Enumerated dictionary of itineraries, each with ETAs and waypoints with participants
+    """
     paths = Path.objects.filter(Q(related_route=route) & Q(start_node__isnull=False))
     out = dict()
     for path_idx, path in enumerate(paths):
         data = dict()
         data["username"] = path.account.username
-        data["eta"] = time.time()+ get_total_time(path)
+        data["eta"] = time.time() + get_total_time(path)
         data["waypoints"] = dict()
         for waypoint_idx, waypoint in enumerate(
                 i.waypoint for i in PathNode.objects.filter(path_on=path).exclude(waypoint=None)):
@@ -26,13 +30,18 @@ def get_itineraries(route: Route) -> dict[int, dict]:
             while node is not None:
                 dist_to_end += node.dist_waiting_at_node
                 node = node.child_node
-            waypoint_data["eta"] = time.time() + get_total_time(waypoint_participants[0].path_on) - (dist_to_end * 60 * 60 / 4800)
+            waypoint_data["eta"] = time.time() + get_total_time(waypoint_participants[0].path_on) - (
+                        dist_to_end * 60 * 60 / 4800)
             data["waypoints"][waypoint_idx] = waypoint_data
         out[path_idx] = data
     return out
 
 
-def get_junction_name(point: GeoPoint) -> str :
+def get_junction_name(point: GeoPoint) -> str:
+    """
+    :param point: GeoPoint
+    :return: Name of adjacent streets (or nearest street if adjacent ones are unnamed)
+    """
     checked = set()
     junction_name = ""
     while junction_name == "":
@@ -42,22 +51,41 @@ def get_junction_name(point: GeoPoint) -> str :
         checked.add(end_node)
     return junction_name
 
+
 def get_total_dist(path: Path) -> float:
+    """
+    :param path: Database object of the relevant path
+    :return: Total distance of path, including distance waiting at each node.
+    """
     return path.start_node.dist_to_end - path.offset_from_start + sum(
         i.dist_waiting_at_node for i in PathNode.objects.filter(path_on=path).all())
 
+
 def get_total_time(path: Path) -> float:
+    """
+    :param path: Database object of the relevant path
+    :return: Total time of the path, including time waiting at each node.
+    """
     return get_total_dist(path) * 60 * 60 / 4800
 
 
 def latlong(nodes) -> dict[int, dict[str, float]]:
+    """
+    :param nodes: List of graph nodes
+    :return: Enumerated dictionary of all nodes lat / long
+    """
     data = {}
     for idx, point in enumerate(nodes):
         data[idx] = {"lat": point.lat, "long": point.long}
     return data
 
 
-def cleanup_path(path_db: Path):
+def cleanup_path(path_db: Path) -> None:
+    """
+    Deletion of all waypoints and nodes for a path.
+    :param path_db: Database object of the relevant path
+    :return:
+    """
     all_waypoints = Waypoint.objects.all()
     waypoints = dict()
     for i in all_waypoints:
@@ -77,6 +105,12 @@ def cleanup_path(path_db: Path):
 
 
 def fix_waypoints(waypoints: dict[int, Waypoint]) -> None:
+    """
+    Checks that there are multiple people still at each waypoint, deleting and notifying if not, possibly updating the
+    time waiting if there are.
+    :param waypoints: Waypoints to fix
+    :return:
+    """
     for waypoint in waypoints.values():
         nodes_at_waypoint = PathNode.objects.filter(waypoint=waypoint).all()
         if len(nodes_at_waypoint) < 2:
