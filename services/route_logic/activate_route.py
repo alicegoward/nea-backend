@@ -2,7 +2,7 @@ import time
 from typing import Any
 
 from django.conf import settings
-from django.db.models import Exists, Subquery
+from django.db.models import Exists, Subquery, OuterRef
 
 from api.models import Route, User, Path, UserOnRoute, Waypoint, PathNode, LocationData, Notification
 from services.graph_logic.nodes import GeoPoint, NodeWithOffset
@@ -27,18 +27,18 @@ class ActivateRoute:
         self.path_db = path_db
         self.start_coord = GeoPoint(data["position"]["lat"], self.data["position"]["long"])
         self.based_on_route = Route.objects.get(routeName=self.data["route"])
-        self.other_paths = (Path.objects.filter(related_route=self.based_on_route).exclude(account=user)
+        self.other_paths = (Path.objects.filter(related_route=self.based_on_route).exclude(account=self.user)
                             .annotate(
-            has_mor=Exists(UserOnRoute.objects.filter(user=self.user, route=self.based_on_route, create_mor=True)),
+            has_mor=Exists(UserOnRoute.objects.filter(user=OuterRef('account'), route=self.based_on_route, create_mor=True)),
             mor_tolerance_s=Subquery(
-                UserOnRoute.objects.filter(user='account', route=self.based_on_route).values('mor_tolerance_s'))
+                UserOnRoute.objects.filter(user=OuterRef('account'), route=self.based_on_route).values('mor_tolerance_s'))
         ).filter(has_mor=True).all())
         if self.path_db is None:
-            Path.objects.filter(account=user).delete()
-            self.path_db = Path(account=user, related_route=self.based_on_route)
+            Path.objects.filter(account=self.user).delete()
+            self.path_db = Path(account=self.user, related_route=self.based_on_route)
         else:
             cleanup_path(self.path_db)
-        max_time_millis = self.based_on_route.end_time - self.data["datetime"] + UserOnRoute.objects.get(user=user,
+        max_time_millis = self.based_on_route.end_time - self.data["datetime"] + UserOnRoute.objects.get(user=self.user,
                                                                                                          route=self.based_on_route).mor_tolerance_s
         self.max_dist = max_time_millis * 4800 / (60 * 60)
         self.end_coord = GeoPoint(self.based_on_route.end_lat, self.based_on_route.end_long)
