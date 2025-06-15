@@ -35,7 +35,7 @@ class Graph:
         Implementation of Dijkstra on the graph
         :param start: node ID of start point
         :param end: Node IDs of end points - the algorithm continues running until all end nodes have been reached.
-        :return:
+        :return: Dictionary of nodes and their parent + distances
         """
         visited = {}
         heap = [(0, start, start)]

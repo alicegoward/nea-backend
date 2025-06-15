@@ -13,9 +13,9 @@ def update_route_data(data: dict[str, Any]) -> None:
     :return:
     """
     route = Route.objects.get(routeName=data["route"])
-    if "time" in data:
+    if "time" in data.keys():
         route.end_time = int(data["time"])
-    elif "lat" in data:
+    elif "lat" in data.keys():
         route.end_lat = float(data["lat"])
         route.end_long = float(data["long"])
         route.junction_name = get_junction_name(GeoPoint(route.end_lat, route.end_long))
@@ -24,6 +24,7 @@ def update_route_data(data: dict[str, Any]) -> None:
         for i in data.items():
             if i[0] != "route":
                 UserOnRoute(route=route, user=User.objects.get(username=i[1])).save()
+    route.save()
 
 
 def get_individual_config_data(data: dict[str, Any], user: str) -> dict[str, Any]:
