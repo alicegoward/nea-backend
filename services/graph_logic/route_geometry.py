@@ -39,7 +39,7 @@ def get_other_geometry(path: Path) -> dict:
 
 def route_from_nodes(not_start: int | None, start: int, end: int, path_from_start: dict[int, DijkstraNode],
                      path_from_end: dict[int, DijkstraNode], meeting_node: int | None, waypoints: dict[int, Waypoint],
-                     path_db: Path) ->  list[GeoPoint]:
+                     path_db: Path) -> list[GeoPoint]:
     """
     Uses predefined Dijkstra's and a meeting point to trace the full path, working backwards from the node to the start
     and forwards from the node to the end. Adds and saves any relevant waypoints and related database objects.

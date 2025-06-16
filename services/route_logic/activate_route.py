@@ -21,6 +21,9 @@ class ActivateRoute:
         :param path_db: Current path (if called due to going off course)
         """
         # initialisation + loading data dictionary and database
+        self.route_start_offset = None
+        self.not_start = None
+        self.start = None
         self.main_path_geometry = dict()
         self.data = data
         self.user = user
@@ -29,9 +32,11 @@ class ActivateRoute:
         self.based_on_route = Route.objects.get(routeName=self.data["route"])
         self.other_paths = (Path.objects.filter(related_route=self.based_on_route).exclude(account=self.user)
                             .annotate(
-            has_mor=Exists(UserOnRoute.objects.filter(user=OuterRef('account'), route=self.based_on_route, create_mor=True)),
+            has_mor=Exists(
+                UserOnRoute.objects.filter(user=OuterRef('account'), route=self.based_on_route, create_mor=True)),
             mor_tolerance_s=Subquery(
-                UserOnRoute.objects.filter(user=OuterRef('account'), route=self.based_on_route).values('mor_tolerance_s'))
+                UserOnRoute.objects.filter(user=OuterRef('account'), route=self.based_on_route).values(
+                    'mor_tolerance_s'))
         ).filter(has_mor=True).all())
         if self.path_db is None:
             Path.objects.filter(account=self.user).delete()

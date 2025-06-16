@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-)+d!c8)7w3+$5k_^-_yju5h1@yv1_o007fv(^ulwhp$f8mb+-=
 DEBUG = True
 
 CSRF_TRUSTED_ORIGINS = ["https://nea.uksouth.cloudapp.azure.com"]
-ALLOWED_HOSTS = ['192.168.137.1','127.0.0.1','nea.uksouth.cloudapp.azure.com']
+ALLOWED_HOSTS = ['192.168.137.1', '127.0.0.1', 'nea.uksouth.cloudapp.azure.com']
 
 # Application definition
 

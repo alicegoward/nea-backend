@@ -38,7 +38,7 @@ class Graph:
         :return: Dictionary of nodes and their parent + distances
         """
         visited = {}
-        heap = [(0, start, start)]
+        heap = [(0.0, start, start)]
         while heap:
             dist, node, parent = heapq.heappop(heap)
             if node in visited: continue

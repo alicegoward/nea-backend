@@ -31,7 +31,7 @@ def get_itineraries(route: Route) -> dict[int, dict]:
                 dist_to_end += node.dist_waiting_at_node
                 node = node.child_node
             waypoint_data["eta"] = time.time() + get_total_time(waypoint_participants[0].path_on) - (
-                        dist_to_end * 60 * 60 / 4800)
+                    dist_to_end * 60 * 60 / 4800)
             data["waypoints"][waypoint_idx] = waypoint_data
         out[path_idx] = data
     return out
