@@ -22,4 +22,4 @@ def notify_others_data(data: dict[str, str], user: str) -> None:
     :param user: User sending the notification.
     """
     for i in UserOnRoute.objects.filter(route__routeName=data["route"]).exclude(user__username=user):
-        Notification(user=i.username, notification=data["data"], datetime=int(time.time())).save()
+        Notification(user=i.user.username, notification=data["data"], datetime=int(time.time())).save()
