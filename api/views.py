@@ -24,7 +24,7 @@ def show_notification(request: WSGIRequest) -> JsonResponse:
     :param request: Request for user's pending notifications
     :return: List of notifications
     """
-    return send_request(lambda: show_notifications_data(request.user))
+    return send_request(lambda: {"notifications": show_notifications_data(request.user)})
 
 
 def notify_others(request: WSGIRequest) -> JsonResponse:

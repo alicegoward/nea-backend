@@ -3,6 +3,9 @@ core/__pycache__
 api/__pycache__
 api/migrations
 services/graph_logic/__pycache__
+services/route_logic/__pycache__
+services/user_logic/__pycache__
+config/gunicorn/pid.py
 api/views/__pycache__
 cache/
 .vscode
