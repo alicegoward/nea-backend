@@ -18,6 +18,13 @@ def add_route(request: WSGIRequest) -> JsonResponse:
     """
     return send_request(lambda: add_route_data(loads(request.body), request.user))
 
+def delete_route(request: WSGIRequest) -> JsonResponse:
+    """
+    :param request: Route name
+    :return: Empty JsonResponse
+    """
+    return send_request(lambda: delete_route_data(loads(request.body), request.user))
+
 
 def show_notification(request: WSGIRequest) -> JsonResponse:
     """

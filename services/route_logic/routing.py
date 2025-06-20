@@ -98,3 +98,10 @@ def add_route_data(data: dict[str, int | str], user: str) -> None:
     UserOnRoute(user=user, route=route).save()
     for i in data["friends"].values():
         UserOnRoute(user=User.objects.get(username=i), route=route).save()
+
+def delete_route_data(data: dict[str, str], user: str) -> None:
+    """
+    :param data: name of the route to delete
+    :param user: user deleting the route (must be admin)
+    """
+    Route(user=user, route=data["routeName"]).delete()

@@ -7,6 +7,7 @@ urlpatterns = [
 
     path("route/create", views.add_route, name="add_route"),
     path("route/update", views.update_route, name="update route"),
+    path("route/delete", views.delete_route, name="delete route"),
     path("get_route", views.get_routes, name="get_route"),
     path("route/activate", views.activate_route, name="activate_route"),
     path("route/deactivate", views.deactivate, name="deactivate"),
