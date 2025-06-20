@@ -104,4 +104,4 @@ def delete_route_data(data: dict[str, str], user: str) -> None:
     :param data: name of the route to delete
     :param user: user deleting the route (must be admin)
     """
-    Route(user=user, route=data["routeName"]).delete()
+    Route(user=user, route=data["route"]).delete()
