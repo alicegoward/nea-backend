@@ -1,14 +1,14 @@
 import time
 from datetime import timedelta
 from typing import Any
-
+import traceback
 from django.conf import settings
 from django.utils.timezone import now
 
 from api.models import Path, UserOnRoute, Notification, Waypoint, PathNode, Route, User
 from services.graph_logic.nodes import GeoPoint
 from services.graph_logic.route_geometry import get_other_geometry
-from services.graph_logic.utils import get_total_time, latlong, get_total_dist, get_itineraries, get_junction_name
+from services.graph_logic.utils import get_total_time, latlong, get_total_dist, get_itineraries, get_junction_name, fix_waypoints
 from services.route_logic.activate_route import ActivateRoute
 
 
@@ -73,6 +73,12 @@ def location_update_data(data: dict[str, Any], user: str) -> dict[str, Any]:
         Notification(notification="gone off course (time)", user=user, datetime=int(time.time())).save()
         return ActivateRoute(data, user, path).get_result()
     path.save()
+    waypoints = dict()
+    waypoint_list = Waypoint.objects.all()
+    for i in waypoint_list:
+        node = PathNode.objects.filter(waypoint=i).all().first()
+        if node is not None: waypoints[node.node_id] = i
+    fix_waypoints(waypoints)
     waypoint_nodes = [PathNode.objects.filter(waypoint=i).all().first() for i in Waypoint.objects.all()]
     return {"geometry": latlong(geometry_path),
             "dist": get_total_dist(path),

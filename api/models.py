@@ -44,8 +44,8 @@ class PathNode(models.Model):
     at a normal walking speed as all calculations are done in meters.
     """
     node_id = models.BigIntegerField()
-    parent_node = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
-    child_node = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    parent_node = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    child_node = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     path_on = models.ForeignKey('Path', on_delete=models.CASCADE)
     dist_to_end = models.FloatField()
     dist_waiting_at_node = models.FloatField(default=0)

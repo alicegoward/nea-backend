@@ -1,5 +1,6 @@
 from json import loads
 from typing import Callable
+import traceback
 
 from django.core.handlers.wsgi import WSGIRequest
 from django.http import JsonResponse
@@ -160,7 +161,7 @@ def send_request(do_on_thing: Callable[[], dict | None], failure_reason: str | N
         else:
             return JsonResponse({}, status=200)
     except Exception as e:
-        print(e)
+        traceback.print_exc()
         if failure_reason is not None:
             return JsonResponse({"reason": failure_reason}, status=failure_status)
         return JsonResponse({}, status=failure_status)
