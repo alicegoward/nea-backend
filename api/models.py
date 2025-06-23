@@ -7,8 +7,7 @@ from django.utils.crypto import get_random_string
 class LocationData(models.Model):
     """
     Most recent location data from a user's path along a route.
-    Previous values not stored as it is unnecessary and would take up a
-    large amount of storage.
+    Previous values not stored as it is unnecessary and would take up a large amount of storage.
     """
     lat = models.FloatField()
     long = models.FloatField()
@@ -18,8 +17,7 @@ class LocationData(models.Model):
 class User(models.Model):
     """
     Data about each user.
-    Friends and pending_friends are both many to many fields, Django
-    automatically creates a link table.
+    Friends and pending_friends are both many to many fields, Django automatically creates a link table.
     """
     username = models.CharField(max_length=200, primary_key=True)
     password = models.CharField(max_length=200)
@@ -33,8 +31,7 @@ class User(models.Model):
 
 class Waypoint(models.Model):
     """
-    Django generates a primary key (id) by default and this is the only
-    required feature of a Waypoint
+    Django generates a primary key (id) by default and this is the only required feature of a Waypoint
     """
     pass
 
@@ -42,52 +39,38 @@ class Waypoint(models.Model):
 class PathNode(models.Model):
     """
     Per node (street junction) on a route
-    Parent and child nodes are the previous and next nodes, so deleting
-    one implies the entire path is deleted.
-    "dist_waiting_at_node" is the time spent waiting for other people if the
-    node is a waypoint, converted into meters
+    Parent and child nodes are the previous and next nodes, so deleting one implies the entire path is deleted.
+    "dist_waiting_at_node" is the time spent waiting for other people if the node is a waypoint, converted into meters
     at a normal walking speed as all calculations are done in meters.
     """
     node_id = models.BigIntegerField()
-    parent_node = models.ForeignKey(
-        'self', on_delete=models.CASCADE,
-        null=True, blank=True, related_name='+')
-    child_node = models.ForeignKey(
-        'self', on_delete=models.CASCADE,
-        null=True, blank=True, related_name='+')
+    parent_node = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    child_node = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     path_on = models.ForeignKey('Path', on_delete=models.CASCADE)
     dist_to_end = models.FloatField()
     dist_waiting_at_node = models.FloatField(default=0)
-    waypoint = models.ForeignKey(
-        Waypoint, on_delete=models.SET_NULL, null=True)
+    waypoint = models.ForeignKey(Waypoint, on_delete=models.SET_NULL, null=True)
 
 
 class Path(models.Model):
     """
-    Unlike the route, this is the actual track that a person is taking,
-    so only exists if they have activated the route.
-    Offset from start is the distance ahead of the first node that the
-    user is, as therefore the edge that they are on
+    Unlike the route, this is the actual track that a person is taking, so only exists if they have activated the route.
+    Offset from start is the distance ahead of the first node that the user is, as therefore the edge that they are on
     is still defined.
     """
-    start_node = models.ForeignKey(PathNode, on_delete=models.SET_NULL,
-                                   null=True, related_name='+')
-    end_node = models.ForeignKey(
-        PathNode, on_delete=models.SET_NULL, null=True, related_name='+')
+    start_node = models.ForeignKey(PathNode, on_delete=models.SET_NULL, null=True, related_name='+')
+    end_node = models.ForeignKey(PathNode, on_delete=models.SET_NULL, null=True, related_name='+')
     account = models.ForeignKey(User, on_delete=models.CASCADE)
-    current_location = models.ForeignKey(
-        LocationData, on_delete=models.SET_NULL, null=True, related_name='+')
+    current_location = models.ForeignKey(LocationData, on_delete=models.SET_NULL, null=True, related_name='+')
     on_path = models.BooleanField(default=True)
     offset_from_start = models.FloatField(null=True)
-    related_route = models.ForeignKey(
-        'Route', on_delete=models.CASCADE, related_name='+', null=True)
+    related_route = models.ForeignKey('Route', on_delete=models.CASCADE, related_name='+', null=True)
     eta = models.DateTimeField(default=datetime.now())
 
 
 class UserOnRoute(models.Model):
     """
-    This is another many-to-many relationship, but is manually defined
-    due to configuration settings being specific for
+    This is another many-to-many relationship, but is manually defined due to configuration settings being specific for
     each user on a route.
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -100,8 +83,7 @@ class UserOnRoute(models.Model):
 
 class Route(models.Model):
     """
-    This is the overall route settings. The __str__ method is
-    for debugging only.
+    This is the overall route settings. The __str__ method is for debugging only.
     """
     routeName = models.CharField(max_length=200)
     user = models.CharField(max_length=200)
@@ -116,8 +98,7 @@ class Route(models.Model):
 
 class Notification(models.Model):
     """
-    These are stored and timestamped until the relevant client
-     requests notifications.
+    These are stored and timestamped until the relevant client requests notifications.
     """
     user = models.CharField(max_length=200)
     notification = models.CharField(max_length=1000)
