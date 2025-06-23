@@ -9,7 +9,8 @@ from services.graph_logic.utils import get_junction_name, fix_waypoints
 
 def update_route_data(data: dict[str, Any]) -> None:
     """
-    :param data: New data about the route, affecting all participants. Only modifiable by the route admin.
+    :param data: New data about the route, affecting all participants. Only
+    modifiable by the route admin.
     :return:
     """
     route = Route.objects.get(routeName=data["route"])
@@ -18,16 +19,19 @@ def update_route_data(data: dict[str, Any]) -> None:
     elif "lat" in data.keys():
         route.end_lat = float(data["lat"])
         route.end_long = float(data["long"])
-        route.junction_name = get_junction_name(GeoPoint(route.end_lat, route.end_long))
+        route.junction_name = get_junction_name(
+            GeoPoint(route.end_lat, route.end_long))
     else:
         UserOnRoute.objects.filter(route=route).delete()
         for i in data.items():
             if i[0] != "route":
-                UserOnRoute(route=route, user=User.objects.get(username=i[1])).save()
+                UserOnRoute(route=route,
+                            user=User.objects.get(username=i[1])).save()
     route.save()
 
 
-def get_individual_config_data(data: dict[str, Any], user: str) -> dict[str, Any]:
+def get_individual_config_data(data: dict[str, Any], user: str) -> dict[
+    str, Any]:
     """
     :param data: Route
     :param user: User
@@ -75,7 +79,9 @@ def get_routes_data(user: str) -> dict[str, bool | dict[Any, Any]]:
             "junction_name": route.junction_name,
             "friends": {}
         }
-        for j, friend in enumerate(User.objects.filter(useronroute__route=route).exclude(user=route.user)):
+        for j, friend in enumerate(
+                User.objects.filter(useronroute__route=route).exclude(
+                        user=route.user)):
             route_data["friends"][j] = friend.username
         data["data"][i] = route_data
     return data

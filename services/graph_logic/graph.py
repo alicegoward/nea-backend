@@ -34,7 +34,8 @@ class Graph:
         """
         Implementation of Dijkstra on the graph
         :param start: node ID of start point
-        :param end: Node IDs of end points - the algorithm continues running until all end nodes have been reached.
+        :param end: Node IDs of end points - the algorithm continues running
+        until all end nodes have been reached.
         :return: Dictionary of nodes and their parent + distances
         """
         visited = {}
@@ -63,13 +64,15 @@ class Graph:
         """
         min_dist, node_id = math.inf, 0
         for id, node in self.graph.items():
-            dist = (point.long - node.position.long) ** 2 + (point.lat - node.position.lat) ** 2
+            dist = (point.long - node.position.long) ** 2 + (
+                        point.lat - node.position.lat) ** 2
             if dist < min_dist and id not in exclude:
                 min_dist = dist
                 node_id = id
         return node_id
 
-    def dist_to_path_from_node(self, a_id: int, point: GeoPoint) -> dict[int, float]:
+    def dist_to_path_from_node(self, a_id: int, point: GeoPoint) -> dict[
+        int, float]:
         """
         Point to line calculations for all edges adjacent to point a
         :param a_id: ID of one end of the path the point is on
@@ -78,10 +81,12 @@ class Graph:
         """
         result = dict()
         for b_id in self.graph[a_id].neighbours:
-            b_x = (self.graph[b_id].position.long - self.graph[a_id].position.long) * 111000 * math.cos(
+            b_x = (self.graph[b_id].position.long - self.graph[
+                a_id].position.long) * 111000 * math.cos(
                 math.radians(self.graph[a_id].position.lat))
             if b_x == 0: b_x = 1e-10
-            b_y = (self.graph[b_id].position.lat - self.graph[a_id].position.lat) * 111000
+            b_y = (self.graph[b_id].position.lat - self.graph[
+                a_id].position.lat) * 111000
             p_x = point.long - self.graph[a_id].position.long
             p_y = point.lat - self.graph[a_id].position.lat
             m_ab = (-b_y) / (-b_x)
@@ -113,14 +118,16 @@ class Graph:
             closest_nodes[i] = math.inf
         max_node = 0
         for id, node in self.graph.items():
-            dist = (point.long - node.position.long) ** 2 + (point.lat - node.position.lat) ** 2
+            dist = (point.long - node.position.long) ** 2 + (
+                        point.lat - node.position.lat) ** 2
             if dist < closest_nodes[max_node]:
                 closest_nodes.pop(max_node)
                 closest_nodes[id] = dist
                 max_node = max(closest_nodes.items(), key=lambda k: k[1])[0]
         node_a, node_b, min_dist = 0, 0, math.inf
         for a_id in closest_nodes.keys():
-            option = min(self.dist_to_path_from_node(a_id, point).items(), key=lambda k: k[1])
+            option = min(self.dist_to_path_from_node(a_id, point).items(),
+                         key=lambda k: k[1])
             if option[1] < min_dist:
                 node_b, min_dist = option
                 node_a = a_id

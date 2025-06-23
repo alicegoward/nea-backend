@@ -10,9 +10,11 @@ from services.graph_logic.nodes import GeoPoint
 def get_itineraries(route: Route) -> dict[int, dict]:
     """
     :param route: Database object of the relevant route
-    :return: Enumerated dictionary of itineraries, each with ETAs and waypoints with participants
+    :return: Enumerated dictionary of itineraries, each with ETAs and waypoints
+    with participants
     """
-    paths = Path.objects.filter(Q(related_route=route) & Q(start_node__isnull=False))
+    paths = Path.objects.filter(
+        Q(related_route=route) & Q(start_node__isnull=False))
     out = dict()
     for path_idx, path in enumerate(paths):
         data = dict()
@@ -20,18 +22,22 @@ def get_itineraries(route: Route) -> dict[int, dict]:
         data["eta"] = time.time() + get_total_time(path)
         data["waypoints"] = dict()
         for waypoint_idx, waypoint in enumerate(
-                i.waypoint for i in PathNode.objects.filter(path_on=path).exclude(waypoint=None)):
+                i.waypoint for i in
+                PathNode.objects.filter(path_on=path).exclude(waypoint=None)):
             waypoint_data = {"participants": dict()}
             waypoint_participants = PathNode.objects.filter(waypoint=waypoint)
-            for node_idx, participating_node in enumerate(waypoint_participants):
-                waypoint_data["participants"][node_idx] = participating_node.path_on.account.username
+            for node_idx, participating_node in enumerate(
+                    waypoint_participants):
+                waypoint_data["participants"][
+                    node_idx] = participating_node.path_on.account.username
             node = waypoint_participants[0]
             dist_to_end = node.dist_to_end
             while node is not None:
                 dist_to_end += node.dist_waiting_at_node
                 node = node.child_node
-            waypoint_data["eta"] = time.time() + get_total_time(waypoint_participants[0].path_on) - (
-                    dist_to_end * 60 * 60 / 4800)
+            waypoint_data["eta"] = time.time() + get_total_time(
+                waypoint_participants[0].path_on) - (
+                                           dist_to_end * 60 * 60 / 4800)
             data["waypoints"][waypoint_idx] = waypoint_data
         out[path_idx] = data
     return out
@@ -40,14 +46,16 @@ def get_itineraries(route: Route) -> dict[int, dict]:
 def get_junction_name(point: GeoPoint) -> str:
     """
     :param point: GeoPoint
-    :return: Name of adjacent streets (or nearest street if adjacent ones are unnamed)
+    :return: Name of adjacent streets (or nearest street if adjacent ones are
+    unnamed)
     """
     checked = set()
     junction_name = ""
     while junction_name == "":
         end_node = settings.G.closest_from_lat_long(point, checked)
         junction_name += ", ".join(
-            set([i.name for i in settings.G.graph[end_node].neighbours.values() if i.name != "unnamed road"]))
+            set([i.name for i in settings.G.graph[end_node].neighbours.values()
+                 if i.name != "unnamed road"]))
         checked.add(end_node)
     return junction_name
 
@@ -58,7 +66,8 @@ def get_total_dist(path: Path) -> float:
     :return: Total distance of path, including distance waiting at each node.
     """
     return path.start_node.dist_to_end - path.offset_from_start + sum(
-        i.dist_waiting_at_node for i in PathNode.objects.filter(path_on=path).all())
+        i.dist_waiting_at_node for i in
+        PathNode.objects.filter(path_on=path).all())
 
 
 def get_total_time(path: Path) -> float:
@@ -106,7 +115,8 @@ def cleanup_path(path_db: Path) -> None:
 
 def fix_waypoints(waypoints: dict[int, Waypoint]) -> None:
     """
-    Checks that there are multiple people still at each waypoint, deleting and notifying if not, possibly updating the
+    Checks that there are multiple people still at each waypoint, deleting and
+    notifying if not, possibly updating the
     time waiting if there are.
     :param waypoints: Waypoints to fix
     :return:
@@ -119,13 +129,17 @@ def fix_waypoints(waypoints: dict[int, Waypoint]) -> None:
                 node.save()
                 Notification(
                     user=node.path_on.account,
-                    notification=f"The meeting at {settings.G.graph[node.node_id].position} has been cancelled.",
+                    notification=f"The meeting at {
+                    settings.G.graph[node.node_id].position} has been cancelled.",
                     datetime=int(time.time())
                 ).save()
             waypoint.delete()
         else:
-            max_dist_to_end = max(nodes_at_waypoint,
-                                  key=lambda k: k.path_on.start_node.dist_to_end).path_on.start_node.dist_to_end
+            max_dist_to_end = (max(
+                nodes_at_waypoint,
+                key=lambda k: k.path_on.start_node.dist_to_end).
+                               path_on.start_node.dist_to_end)
             for node in nodes_at_waypoint:
-                node.dist_waiting_at_node = max_dist_to_end - node.path_on.start_node.dist_to_end
+                node.dist_waiting_at_node = (max_dist_to_end -
+                                             node.path_on.start_node.dist_to_end)
                 node.save()

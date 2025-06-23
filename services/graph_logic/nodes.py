@@ -39,7 +39,8 @@ class Node:
 
     def __str__(self) -> str:
         """Debugging purposes only"""
-        return f"lat: {self.position.lat}, long: {self.position.long}\nneighbours: {self.neighbours}"
+        return f"lat: {self.position.lat}, long: {
+        self.position.long}\nneighbours: {self.neighbours}"
 
 
 class DijkstraNode:

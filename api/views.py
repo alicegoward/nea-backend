@@ -16,14 +16,17 @@ def add_route(request: WSGIRequest) -> JsonResponse:
     :param request: Route information
     :return: Empty JsonResponse
     """
-    return send_request(lambda: add_route_data(loads(request.body), request.user))
+    return send_request(
+        lambda: add_route_data(loads(request.body), request.user))
+
 
 def delete_route(request: WSGIRequest) -> JsonResponse:
     """
     :param request: Route name
     :return: Empty JsonResponse
     """
-    return send_request(lambda: delete_route_data(loads(request.body), request.user))
+    return send_request(
+        lambda: delete_route_data(loads(request.body), request.user))
 
 
 def show_notification(request: WSGIRequest) -> JsonResponse:
@@ -31,7 +34,8 @@ def show_notification(request: WSGIRequest) -> JsonResponse:
     :param request: Request for user's pending notifications
     :return: List of notifications
     """
-    return send_request(lambda: {"notifications": show_notifications_data(request.user)})
+    return send_request(
+        lambda: {"notifications": show_notifications_data(request.user)})
 
 
 def notify_others(request: WSGIRequest) -> JsonResponse:
@@ -39,7 +43,8 @@ def notify_others(request: WSGIRequest) -> JsonResponse:
     :param request: Information about what to notify
     :return: Empty JsonResponse
     """
-    return send_request(lambda: notify_others_data(loads(request.body), request.user))
+    return send_request(
+        lambda: notify_others_data(loads(request.body), request.user))
 
 
 def location_update(request: WSGIRequest) -> JsonResponse:
@@ -47,7 +52,8 @@ def location_update(request: WSGIRequest) -> JsonResponse:
     :param request: New location information
     :return: New route geometry
     """
-    return send_request(lambda: location_update_data(loads(request.body), request.user))
+    return send_request(
+        lambda: location_update_data(loads(request.body), request.user))
 
 
 def update_route(request: WSGIRequest) -> JsonResponse:
@@ -63,7 +69,8 @@ def get_individual_config(request: WSGIRequest) -> JsonResponse:
     :param request: Who and what route to get data for
     :return: User's current configuration of the route
     """
-    return send_request(lambda: get_individual_config_data(loads(request.body), request.user))
+    return send_request(
+        lambda: get_individual_config_data(loads(request.body), request.user))
 
 
 def set_individual_config(request: WSGIRequest) -> JsonResponse:
@@ -71,7 +78,8 @@ def set_individual_config(request: WSGIRequest) -> JsonResponse:
     :param request: Data to set, who and what to set it for
     :return: Empty JsonResponse
     """
-    return send_request(lambda: set_individual_config_data(loads(request.body), request.user))
+    return send_request(
+        lambda: set_individual_config_data(loads(request.body), request.user))
 
 
 def get_routes(request) -> JsonResponse:
@@ -87,7 +95,8 @@ def activate_route(request: WSGIRequest) -> JsonResponse:
     :param request: Which route to activate, user's current state
     :return: Route geometry + waypoints
     """
-    return send_request(lambda: ActivateRoute(loads(request.body), request.user).get_result())
+    return send_request(
+        lambda: ActivateRoute(loads(request.body), request.user).get_result())
 
 
 def deactivate(request) -> JsonResponse:
@@ -129,9 +138,10 @@ def login(request: WSGIRequest) -> JsonResponse:
     :param request: Username and password to log in with
     :return: Authentication token or error message
     """
-    return send_request(lambda: {"token": login_data(loads(request.body))},
-                        "username / password combination does not exist",
-                        206)
+    return send_request(lambda: {
+        "token": login_data(loads(request.body))},
+        "username / password combination does not exist",
+        206)
 
 
 def register(request: WSGIRequest) -> JsonResponse:
@@ -144,14 +154,20 @@ def register(request: WSGIRequest) -> JsonResponse:
                         206)
 
 
-def send_request(do_on_thing: Callable[[], dict | None], failure_reason: str | None = None,
+def send_request(do_on_thing: Callable[[], dict | None],
+                 failure_reason: str | None = None,
                  failure_status: int = 500) -> JsonResponse:
     """
-    Wrapper function for calling any logical functions - extracts the JsonResponse call and handles errors
-    :param do_on_thing: lambda of the function that will perform the operation, called in a try/except block for error handling
-    :param failure_reason: If relevant (failure for reasons other than server error), the cause of the failure
-    :param failure_status: HTTP status code of the cause of the failure (default is 500 server error)
-    :return: JsonResponse containing the return value of the lambda (empty if lambda returns none)
+    Wrapper function for calling any logical functions - extracts the
+    JsonResponse call and handles errors
+    :param do_on_thing: lambda of the function that will perform the
+    operation, called in a try/except block for error handling
+    :param failure_reason: If relevant (failure for reasons other than server
+    error), the cause of the failure
+    :param failure_status: HTTP status code of the cause of the failure
+    (default is 500 server error)
+    :return: JsonResponse containing the return value of the lambda
+    (empty if lambda returns none)
     """
     try:
         result = do_on_thing()
@@ -162,5 +178,6 @@ def send_request(do_on_thing: Callable[[], dict | None], failure_reason: str | N
     except Exception as e:
         print(e)
         if failure_reason is not None:
-            return JsonResponse({"reason": failure_reason}, status=failure_status)
+            return JsonResponse({"reason": failure_reason},
+                                status=failure_status)
         return JsonResponse({}, status=failure_status)
