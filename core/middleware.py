@@ -13,7 +13,8 @@ class TokenAuth:
         the request
         """
         self.get_response = get_response
-        self.exempt_paths = ['/api/user/login', '/api/user/register', '/admin',
+        self.exempt_paths = ['/api/user/login', '/api/user/register',
+                             '/admin',
                              '/static/admin']
 
     def __call__(self, request: WSGIRequest) -> JsonResponse | Any:

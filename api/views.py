@@ -1,6 +1,5 @@
 from json import loads
 from typing import Callable
-import traceback
 
 from django.core.handlers.wsgi import WSGIRequest
 from django.http import JsonResponse
@@ -71,7 +70,8 @@ def get_individual_config(request: WSGIRequest) -> JsonResponse:
     :return: User's current configuration of the route
     """
     return send_request(
-        lambda: get_individual_config_data(loads(request.body), request.user))
+        lambda: get_individual_config_data(loads(request.body),
+                                           request.user))
 
 
 def set_individual_config(request: WSGIRequest) -> JsonResponse:
@@ -80,7 +80,8 @@ def set_individual_config(request: WSGIRequest) -> JsonResponse:
     :return: Empty JsonResponse
     """
     return send_request(
-        lambda: set_individual_config_data(loads(request.body), request.user))
+        lambda: set_individual_config_data(loads(request.body),
+                                           request.user))
 
 
 def get_routes(request) -> JsonResponse:
@@ -97,7 +98,8 @@ def activate_route(request: WSGIRequest) -> JsonResponse:
     :return: Route geometry + waypoints
     """
     return send_request(
-        lambda: ActivateRoute(loads(request.body), request.user).get_result())
+        lambda: ActivateRoute(loads(request.body),
+                              request.user).get_result())
 
 
 def deactivate(request) -> JsonResponse:
@@ -123,7 +125,8 @@ def update_friend_state(request: WSGIRequest) -> JsonResponse:
     :param request: Accepting + accepted users
     :return: Empty JsonResponse
     """
-    return send_request(lambda: update_friend_state_data(loads(request.body)))
+    return send_request(
+        lambda: update_friend_state_data(loads(request.body)))
 
 
 def get_friends(request) -> JsonResponse:
@@ -141,8 +144,8 @@ def login(request: WSGIRequest) -> JsonResponse:
     """
     return send_request(lambda: {
         "token": login_data(loads(request.body))},
-        "username / password combination does not exist",
-        206)
+                        "username / password combination does not exist",
+                        206)
 
 
 def register(request: WSGIRequest) -> JsonResponse:
@@ -150,9 +153,10 @@ def register(request: WSGIRequest) -> JsonResponse:
     :param request: Username and password to register
     :return: Authentication token or error message
     """
-    return send_request(lambda: {"token": register_data(loads(request.body))},
-                        "user already registered",
-                        206)
+    return send_request(
+        lambda: {"token": register_data(loads(request.body))},
+        "user already registered",
+        206)
 
 
 def send_request(do_on_thing: Callable[[], dict | None],
@@ -163,8 +167,8 @@ def send_request(do_on_thing: Callable[[], dict | None],
     JsonResponse call and handles errors
     :param do_on_thing: lambda of the function that will perform the
     operation, called in a try/except block for error handling
-    :param failure_reason: If relevant (failure for reasons other than server
-    error), the cause of the failure
+    :param failure_reason: If relevant (failure for reasons other than
+    server error), the cause of the failure
     :param failure_status: HTTP status code of the cause of the failure
     (default is 500 server error)
     :return: JsonResponse containing the return value of the lambda

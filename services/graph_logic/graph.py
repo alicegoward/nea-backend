@@ -8,7 +8,8 @@ class Graph:
     def __init__(self) -> None:
         """
         Custom graph class, made up of nodes and edges.
-        As well as weightings for calculations, this includes geographical data.
+        As well as weightings for calculations, this includes geographical
+        data.
         """
         self.graph: dict[int, Node] = dict()
 
@@ -24,7 +25,8 @@ class Graph:
         """
         :param uid: ID of node 1
         :param vid: ID of node 2
-        :param edge: Geographical and distance information about the connection
+        :param edge: Geographical and distance information about the
+        connection
         :return:
         """
         self.graph[uid].neighbours[vid] = edge
@@ -34,7 +36,8 @@ class Graph:
         """
         Implementation of Dijkstra on the graph
         :param start: node ID of start point
-        :param end: Node IDs of end points - the algorithm continues running
+        :param end: Node IDs of end points - the algorithm continues
+        running
         until all end nodes have been reached.
         :return: Dictionary of nodes and their parent + distances
         """
@@ -46,7 +49,8 @@ class Graph:
             visited[node] = DijkstraNode(dist, parent)
             for neighbour, edge in self.graph[node].neighbours.items():
                 if neighbour not in visited:
-                    heapq.heappush(heap, (dist + edge.length, neighbour, node))
+                    heapq.heappush(heap,
+                                   (dist + edge.length, neighbour, node))
             finished = True
             for i in end:
                 if i not in visited:
@@ -55,7 +59,8 @@ class Graph:
                 return visited
         return {}
 
-    def closest_from_lat_long(self, point: GeoPoint, exclude: set = {}) -> int:
+    def closest_from_lat_long(self, point: GeoPoint,
+                              exclude: set = {}) -> int:
         """
         Finds the closest node to a lat/long coordinate.
         :param point:
@@ -65,7 +70,7 @@ class Graph:
         min_dist, node_id = math.inf, 0
         for id, node in self.graph.items():
             dist = (point.long - node.position.long) ** 2 + (
-                        point.lat - node.position.lat) ** 2
+                    point.lat - node.position.lat) ** 2
             if dist < min_dist and id not in exclude:
                 min_dist = dist
                 node_id = id
@@ -107,7 +112,8 @@ class Graph:
             result[b_id] = dist
         return result
 
-    def closest_pair_from_lat_long(self, point: GeoPoint) -> tuple[int, int]:
+    def closest_pair_from_lat_long(self, point: GeoPoint) -> tuple[
+        int, int]:
         """
         Finds the pair of adjacent nodes that the point is between
         :param point: Geographical position of the point
@@ -119,11 +125,12 @@ class Graph:
         max_node = 0
         for id, node in self.graph.items():
             dist = (point.long - node.position.long) ** 2 + (
-                        point.lat - node.position.lat) ** 2
+                    point.lat - node.position.lat) ** 2
             if dist < closest_nodes[max_node]:
                 closest_nodes.pop(max_node)
                 closest_nodes[id] = dist
-                max_node = max(closest_nodes.items(), key=lambda k: k[1])[0]
+                max_node = max(closest_nodes.items(),
+                               key=lambda k: k[1])[0]
         node_a, node_b, min_dist = 0, 0, math.inf
         for a_id in closest_nodes.keys():
             option = min(self.dist_to_path_from_node(a_id, point).items(),

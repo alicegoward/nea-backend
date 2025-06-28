@@ -81,7 +81,7 @@ def get_routes_data(user: str) -> dict[str, bool | dict[Any, Any]]:
         }
         for j, friend in enumerate(
                 User.objects.filter(useronroute__route=route).exclude(
-                        user=route.user)):
+                    user=route.user)):
             route_data["friends"][j] = friend.username
         data["data"][i] = route_data
     return data

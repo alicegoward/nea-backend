@@ -18,7 +18,8 @@ class NodeWithOffset:
 
 
 class Edge:
-    def __init__(self, length: float, geometry: tuple[GeoPoint, ...], name: str):
+    def __init__(self, length: float, geometry: tuple[GeoPoint, ...],
+                 name: str):
         """
         :param length: Distance
         :param geometry: Lat/Long geometry of the edge
@@ -47,7 +48,8 @@ class DijkstraNode:
     def __init__(self, distance: float, parent: int) -> None:
         """
         :param distance: Distance to start
-        :param parent: Parent node (closer to the start, used to trace the route)
+        :param parent: Parent node (closer to the start, used to trace the
+        route)
         """
         self.parent = parent
         self.dist = distance

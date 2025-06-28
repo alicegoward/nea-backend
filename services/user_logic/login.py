@@ -18,8 +18,8 @@ def login_data(data: dict[str, str]) -> str:
 
 def register_data(data: dict[str, str]) -> str:
     """
-    :param data: Username and password to attempt registration, which requires a
-    unique username.
+    :param data: Username and password to attempt registration, which
+    requires a unique username.
     :return: token to authenticate themselves when sending future requests.
     """
     if User.objects.filter(username=data["username"]).count() > 0:

@@ -6,8 +6,8 @@ from api.models import Notification, User
 
 def add_friend_data(data: dict[str, str]) -> None:
     """
-    :param data: information about the requesting and requested user to add to
-    pending friends
+    :param data: information about the requesting and requested user to add
+    to pending friends
     """
     requesting = User.objects.get(username=data["userRequesting"])
     requested = User.objects.get(username=data["userRequested"])
@@ -22,8 +22,8 @@ def add_friend_data(data: dict[str, str]) -> None:
 
 def update_friend_state_data(data: dict[str, str]) -> None:
     """
-    :param data: accepted and accepting friends to update their relationship in
-    the database.
+    :param data: accepted and accepting friends to update their
+    relationship in the database.
     """
     accepting = User.objects.get(username=data["userAccepting"])
     accepted = User.objects.get(username=data["userAccepted"])
@@ -41,8 +41,8 @@ def update_friend_state_data(data: dict[str, str]) -> None:
 def get_friends_data(username: str) -> dict[str, dict[Any, Any]]:
     """
     :param username: User
-    :return: Enumerated dictionaries of usernames for full, incoming and outgoing
-    friends.
+    :return: Enumerated dictionaries of usernames for full, incoming and
+    outgoing friends.
     """
     user = User.objects.get(username=username)
     friend_data = {}

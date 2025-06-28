@@ -11,10 +11,11 @@ from services.graph_logic.utils import get_total_time
 def get_other_geometry(path: Path) -> dict:
     """
     :param path: Database object with relevant information
-    :return: Enumerated dictionary (not list for JSON conversion) with lat/long
-    of each geometry point along edges
+    :return: Enumerated dictionary (not list for JSON conversion) with
+    lat/long of each geometry point along edges
     """
-    other_paths = Path.objects.filter(related_route=path.related_route).exclude(
+    other_paths = Path.objects.filter(
+        related_route=path.related_route).exclude(
         id=path.id)
     data = dict()
     for path in other_paths:
@@ -24,8 +25,9 @@ def get_other_geometry(path: Path) -> dict:
         next_node = current_node.child_node
         geometry_path = [settings.G.graph[current_node.node_id].position]
         while next_node is not None and current_node is not None:
-            geometry = list(settings.G.graph[current_node.node_id].neighbours[
-                                next_node.node_id].geometry)
+            geometry = list(
+                settings.G.graph[current_node.node_id].neighbours[
+                    next_node.node_id].geometry)
             if geometry[0] == geometry_path[-1]:
                 geometry_path += geometry
             else:
@@ -44,14 +46,16 @@ def get_other_geometry(path: Path) -> dict:
 def route_from_nodes(not_start: int | None, start: int, end: int,
                      path_from_start: dict[int, DijkstraNode],
                      path_from_end: dict[int, DijkstraNode],
-                     meeting_node: int | None, waypoints: dict[int, Waypoint],
+                     meeting_node: int | None,
+                     waypoints: dict[int, Waypoint],
                      path_db: Path) -> list[GeoPoint]:
     """
     Uses predefined Dijkstra's and a meeting point to trace the full path,
     working backwards from the node to the start
-    and forwards from the node to the end. Adds and saves any relevant waypoints
-    and related database objects.
-    :param not_start: Node before the current node, used for offset calculations
+    and forwards from the node to the end. Adds and saves any relevant
+    waypoints and related database objects.
+    :param not_start: Node before the current node, used for offset
+    calculations
     :param start: Starting node (ahead of current position)
     :param end: End of route or waypoint to go to
     :param path_from_start: Dijkstra from the starting node
@@ -92,16 +96,16 @@ def route_from_nodes(not_start: int | None, start: int, end: int,
         route_start.append(not_start)
     node_list += route_start[::-1]
 
-    nodes_db = [PathNode(node_id=node_list[0], path_on=path_db, dist_to_end=0)]
+    nodes_db = [
+        PathNode(node_id=node_list[0], path_on=path_db, dist_to_end=0)]
     main_path_geometry = [settings.G.graph[node_list[0]].position]
     for node in node_list[1:]:
         prev_node = nodes_db[-1]
-        nodes_db.append(PathNode(node_id=node,
-                                 path_on=path_db,
-                                 dist_to_end=prev_node.dist_to_end +
-                                             settings.G.graph[
-                                                 prev_node.node_id].neighbours[
-                                                 node].length))
+        nodes_db.append(
+            PathNode(node_id=node, path_on=path_db,
+                     dist_to_end=prev_node.dist_to_end +
+                                 settings.G.graph[prev_node.node_id]
+                     .neighbours[node].length))
         if node in waypoints: nodes_db[-1].waypoint = waypoints[node]
         path_section = list(
             settings.G.graph[prev_node.node_id].neighbours[node].geometry)
