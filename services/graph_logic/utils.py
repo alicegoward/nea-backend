@@ -25,6 +25,11 @@ def get_itineraries(route: Route) -> dict[int, dict]:
                 i.waypoint for i in
                 PathNode.objects.filter(path_on=path).exclude(
                     waypoint=None)):
+            for i in out.values():
+                for j in i["waypoints"]:
+                    if j["id"] == waypoint.id:
+                        data["waypoints"][waypoint_idx] = j
+                        continue
             waypoint_data = {"participants": dict()}
             waypoint_participants = PathNode.objects.filter(
                 waypoint=waypoint)
@@ -40,6 +45,7 @@ def get_itineraries(route: Route) -> dict[int, dict]:
             waypoint_data["eta"] = time.time() + get_total_time(
                 waypoint_participants[0].path_on) - (
                                            dist_to_end * 60 * 60 / 4800)
+            waypoint_data["id"] = waypoint.id
             data["waypoints"][waypoint_idx] = waypoint_data
         out[path_idx] = data
     return out
