@@ -26,17 +26,18 @@ def get_itineraries(route: Route) -> dict[int, dict]:
                 PathNode.objects.filter(path_on=path).exclude(
                     waypoint=None)):
             for i in out.values():
-                for j in i["waypoints"]:
+                for j in i["waypoints"].values():
                     if j["id"] == waypoint.id:
-                        data["waypoints"][waypoint_idx] = j
-                        continue
+                        data["eta"] = i["eta"]
             waypoint_data = {"participants": dict()}
             waypoint_participants = PathNode.objects.filter(
                 waypoint=waypoint)
-            for node_idx, participating_node in enumerate(
-                    waypoint_participants):
+            participants_lst = list(
+                {i.path_on.account.username for i in waypoint_participants})
+            for node_idx, participant in enumerate(
+                    participants_lst):
                 waypoint_data["participants"][
-                    node_idx] = participating_node.path_on.account.username
+                    node_idx] = participant
             node = waypoint_participants[0]
             dist_to_end = node.dist_to_end
             while node is not None:
@@ -145,6 +146,10 @@ def fix_waypoints(waypoints: dict[int, Waypoint]) -> None:
                 ).save()
             waypoint.delete()
         else:
+            all_nodes_at_point = PathNode.objects.filter(node_id=nodes_at_waypoint[0].node_id)
+            for i in all_nodes_at_point:
+                i.waypoint = waypoint
+                i.save()
             max_dist_to_end = (max(
                 nodes_at_waypoint,
                 key=lambda k: k.path_on.start_node.dist_to_end).
