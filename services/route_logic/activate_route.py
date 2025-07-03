@@ -10,7 +10,7 @@ from services.graph_logic.nodes import GeoPoint, NodeWithOffset
 from services.graph_logic.route_geometry import get_other_geometry, \
     route_from_nodes
 from services.graph_logic.utils import cleanup_path, get_total_dist, \
-    latlong, get_itineraries, fix_waypoints
+    latlong, get_itineraries, fix_waypoints, TIME_FROM_DIST
 
 
 class ActivateRoute:
@@ -63,12 +63,12 @@ class ActivateRoute:
             user=self.user,
             route=self.based_on_route)
                 .mor_tolerance_s)
-        self.max_dist = max_time_millis * 4800 / (60 * 60)
+        self.max_dist = max_time_millis / TIME_FROM_DIST
         self.end_coord = GeoPoint(self.based_on_route.end_lat,
                                   self.based_on_route.end_long)
         self.joiner_mor_tolerance_m = (UserOnRoute.objects.get(
             user=user, route=self.based_on_route)
-                                       .mor_tolerance_s * 4800 / (60 * 60))
+                                       .mor_tolerance_s / TIME_FROM_DIST)
         self.end = settings.G.closest_from_lat_long(self.end_coord)
         self.get_start()
         self.path_db.offset_from_start = self.route_start_offset
@@ -259,7 +259,7 @@ class ActivateRoute:
         mor_tolerance_m = min(
             self.joiner_mor_tolerance_m, UserOnRoute.objects.get(
                 user=path.account, route=self.based_on_route
-            ).mor_tolerance_s * 4800 / (60 * 60))
+            ).mor_tolerance_s / TIME_FROM_DIST)
         if (abs(distance_difference_to_node) < mor_tolerance_m and
                 self.route[node].dist - self.route_start_offset
                 < self.min_dist_until_meet and dist_new_a - dist_old_a
@@ -293,7 +293,7 @@ class ActivateRoute:
                               UserOnRoute.objects.get(
                                   user=path.account,
                                   route=self.based_on_route)
-                              .mor_tolerance_s * 4800 / (60 * 60))
+                              .mor_tolerance_s / TIME_FROM_DIST)
         total_path_dist = self.route[node.node_id].dist + \
                           self.path_from_end[
                               node.node_id].dist - self.route_start_offset

@@ -6,6 +6,7 @@ from django.db.models import Q
 from api.models import Route, Path, PathNode, Notification, Waypoint
 from services.graph_logic.nodes import GeoPoint
 
+TIME_FROM_DIST = 60 * 60 / 4800
 
 def get_itineraries(route: Route) -> dict[int, dict]:
     """
@@ -45,7 +46,7 @@ def get_itineraries(route: Route) -> dict[int, dict]:
                 node = node.child_node
             waypoint_data["eta"] = time.time() + get_total_time(
                 waypoint_participants[0].path_on) - (
-                                           dist_to_end * 60 * 60 / 4800)
+                                           dist_to_end * TIME_FROM_DIST)
             waypoint_data["id"] = waypoint.id
             data["waypoints"][waypoint_idx] = waypoint_data
         out[path_idx] = data
@@ -85,7 +86,7 @@ def get_total_time(path: Path) -> float:
     :param path: Database object of the relevant path
     :return: Total time of the path, including time waiting at each node.
     """
-    return get_total_dist(path) * 60 * 60 / 4800
+    return get_total_dist(path) * TIME_FROM_DIST
 
 
 def latlong(nodes) -> dict[int, dict[str, float]]:
