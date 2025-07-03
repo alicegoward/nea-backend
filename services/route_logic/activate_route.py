@@ -284,7 +284,8 @@ class ActivateRoute:
 
     def check_set(self, path, node) -> None:
         """
-        Calculates if this node falls within meet on route constraints and is the most optimal
+        Calculates if this node falls within meet on route constraints 
+        and is the most optimal
         :param path: Path that would be joined
         :param node: Joining node
         :return:

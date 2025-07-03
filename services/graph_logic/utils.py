@@ -147,7 +147,8 @@ def fix_waypoints(waypoints: dict[int, Waypoint]) -> None:
                 ).save()
             waypoint.delete()
         else:
-            all_nodes_at_point = PathNode.objects.filter(node_id=nodes_at_waypoint[0].node_id)
+            all_nodes_at_point = PathNode.objects.filter(
+                node_id=nodes_at_waypoint[0].node_id)
             for i in all_nodes_at_point:
                 i.waypoint = waypoint
                 i.save()
